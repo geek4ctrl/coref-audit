@@ -39,6 +39,22 @@ import { HeaderComponent } from './header/header.component';
       overflow-y: auto;
       background-color: #f5f5f5;
     }
+
+    @media (max-width: 768px) {
+      .dashboard-layout {
+        flex-direction: column;
+      }
+
+      .content-area {
+        padding: 16px;
+      }
+    }
+
+    @media (max-width: 1024px) {
+      .content-area {
+        padding: 16px 20px;
+      }
+    }
   `]
 })
 export class DashboardLayoutComponent {}

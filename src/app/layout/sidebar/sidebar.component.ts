@@ -121,6 +121,30 @@ interface NavItem {
       min-width: 18px;
       text-align: center;
     }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        position: fixed;
+        left: -180px;
+        z-index: 1000;
+        transition: left 0.3s ease;
+      }
+
+      .sidebar.open {
+        left: 0;
+      }
+    }
+
+    @media (max-width: 1024px) {
+      .sidebar {
+        width: 160px;
+      }
+
+      .nav-item {
+        font-size: 12px;
+        padding: 10px 12px;
+      }
+    }
   `]
 })
 export class SidebarComponent {

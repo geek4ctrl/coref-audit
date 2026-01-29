@@ -138,6 +138,38 @@ import { CommonModule } from '@angular/common';
       font-size: 10px;
       color: #666;
     }
+
+    @media (max-width: 768px) {
+      .header {
+        padding: 12px 16px;
+      }
+
+      .header-title h1 {
+        font-size: 14px;
+      }
+
+      .subtitle {
+        font-size: 10px;
+      }
+
+      .user-info {
+        display: none;
+      }
+
+      .header-actions {
+        gap: 12px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .header-title h1 {
+        font-size: 12px;
+      }
+
+      .subtitle {
+        display: none;
+      }
+    }
   `]
 })
 export class HeaderComponent {

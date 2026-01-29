@@ -2,10 +2,11 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { StatusCardComponent, StatusCard } from '../../shared/status-card/status-card.component';
 import { SummaryCardComponent, SummaryCard } from '../../shared/summary-card/summary-card.component';
+import { WorkflowTrackerComponent, WorkflowStage } from '../../shared/workflow-tracker/workflow-tracker.component';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [CommonModule, StatusCardComponent, SummaryCardComponent],
+  imports: [CommonModule, StatusCardComponent, SummaryCardComponent, WorkflowTrackerComponent],
   template: `
     <div class="dashboard">
       <div class="greeting-section">
@@ -45,6 +46,10 @@ import { SummaryCardComponent, SummaryCard } from '../../shared/summary-card/sum
         @for (card of summaryCards; track card.title) {
           <app-summary-card [card]="card" />
         }
+      </div>
+
+      <div class="workflow-section">
+        <app-workflow-tracker [stages]="workflowStages" />
       </div>
     </div>
   `,
@@ -157,7 +162,19 @@ import { SummaryCardComponent, SummaryCard } from '../../shared/summary-card/sum
       gap: 16px;
     }
 
+    .workflow-section {
+      margin-top: 24px;
+    }
+
     @media (max-width: 768px) {
+      .greeting {
+        font-size: 20px;
+      }
+
+      .greeting-subtitle {
+        font-size: 13px;
+      }
+
       .search-filter-section {
         flex-direction: column;
         align-items: stretch;
@@ -169,11 +186,39 @@ import { SummaryCardComponent, SummaryCard } from '../../shared/summary-card/sum
 
       .filters {
         flex-direction: column;
+        width: 100%;
       }
 
-      .status-cards-grid,
+      .filter-select {
+        width: 100%;
+      }
+
+      .new-doc-btn {
+        width: 100%;
+      }
+
+      .status-cards-grid {
+        grid-template-columns: 1fr;
+      }
+
       .summary-cards-grid {
         grid-template-columns: 1fr;
+      }
+    }
+
+    @media (min-width: 769px) and (max-width: 1024px) {
+      .status-cards-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .search-bar {
+        min-width: 250px;
+      }
+    }
+
+    @media (min-width: 1025px) and (max-width: 1366px) {
+      .status-cards-grid {
+        grid-template-columns: repeat(4, 1fr);
       }
     }
   `]
@@ -225,6 +270,39 @@ export class DashboardComponent {
       total: 1,
       percentage: 50,
       icon: '📦',
+      color: '#27ae60'
+    }
+  ];
+
+  workflowStages: WorkflowStage[] = [
+    {
+      title: 'Réception',
+      subtitle: 'Documents entrants',
+      count: 0,
+      color: '#4a90e2'
+    },
+    {
+      title: 'À classifier',
+      subtitle: 'Assistante du Chef',
+      count: 0,
+      color: '#f5a623'
+    },
+    {
+      title: 'À approuver',
+      subtitle: 'En attente Chef/SG',
+      count: 0,
+      color: '#ff6b6b'
+    },
+    {
+      title: 'En traitement',
+      subtitle: 'Piliers / Services',
+      count: 0,
+      color: '#9b59b6'
+    },
+    {
+      title: 'Terminé',
+      subtitle: 'Archivé',
+      count: 0,
       color: '#27ae60'
     }
   ];
