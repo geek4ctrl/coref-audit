@@ -1,1 +1,72 @@
-/* You can add global styles to this file, and also import other style files */
+/* Global styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --primary-blue: #003d82;
+  --dark-blue: #002d5e;
+  --accent-yellow: #ffc107;
+  --status-blue: #4a90e2;
+  --status-orange: #f5a623;
+  --status-purple: #9b59b6;
+  --status-green: #27ae60;
+  --text-dark: #1a1a1a;
+  --text-medium: #666;
+  --text-light: #999;
+  --bg-light: #f5f5f5;
+  --border-light: #e0e0e0;
+  --white: #ffffff;
+  --danger: #dc3545;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--text-dark);
+  background-color: var(--bg-light);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input, select, textarea {
+  font-family: inherit;
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
