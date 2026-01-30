@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -19,13 +19,37 @@ import { CommonModule } from '@angular/common';
           }
         </button>
 
-        <div class="user-profile">
-          <div class="user-avatar">SR</div>
-          <div class="user-info">
-            <div class="user-name">Service Réception</div>
-            <div class="user-role">Réception</div>
+        <div class="user-profile-container">
+          <div class="user-profile" (click)="toggleDropdown()">
+            <div class="user-avatar">SG</div>
+            <div class="user-info">
+              <div class="user-name">Secrétaire Général</div>
+              <div class="user-role">Chef/SG</div>
+            </div>
+            <span class="dropdown-icon" [class.rotated]="isDropdownOpen()">▼</span>
           </div>
-          <span class="dropdown-icon">▼</span>
+
+          @if (isDropdownOpen()) {
+            <div class="dropdown-menu">
+              <div class="dropdown-header">
+                <div class="dropdown-user-avatar">SG</div>
+                <div class="dropdown-user-info">
+                  <div class="dropdown-user-name">Secrétaire Général</div>
+                  <div class="dropdown-user-email">sg@finances.gouv.cd</div>
+                </div>
+              </div>
+              <div class="dropdown-divider"></div>
+              <button class="dropdown-item">
+                <span class="dropdown-item-icon">👤</span>
+                <span>Mon profil</span>
+              </button>
+              <div class="dropdown-divider"></div>
+              <button class="dropdown-item danger">
+                <span class="dropdown-item-icon">🚪</span>
+                <span>Déconnexion</span>
+              </button>
+            </div>
+          }
         </div>
       </div>
     </header>
@@ -60,6 +84,11 @@ import { CommonModule } from '@angular/common';
       display: flex;
       align-items: center;
       gap: 20px;
+      position: relative;
+    }
+
+    .user-profile-container {
+      position: relative;
     }
 
     .notification-btn {
@@ -132,6 +161,119 @@ import { CommonModule } from '@angular/common';
     .user-role {
       font-size: 12px;
       color: #666;
+      transition: transform 0.2s;
+    }
+
+    .dropdown-icon.rotated {
+      transform: rotate(180deg);
+    }
+
+    .dropdown-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      min-width: 260px;
+      z-index: 1000;
+      padding: 8px 0;
+      animation: slideDown 0.2s ease-out;
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .dropdown-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+    }
+
+    .dropdown-user-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: #ffc107;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: #003d82;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .dropdown-user-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .dropdown-user-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1a1a1a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .dropdown-user-email {
+      font-size: 12px;
+      color: #666;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .dropdown-divider {
+      height: 1px;
+      background-color: #e0e0e0;
+      margin: 8px 0;
+    }
+
+    .dropdown-item {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      font-size: 14px;
+      color: #1a1a1a;
+      text-align: left;
+    }
+
+    .dropdown-item:hover {
+      background-color: #f5f5f5;
+    }
+
+    .dropdown-item.danger {
+      color: #dc3545;
+    }
+
+    .dropdown-item.danger:hover {
+      background-color: #fff5f5;
+    }
+
+    .dropdown-item-icon {
+      font-size: 16px;
+      width: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .dropdown-icon {
@@ -174,4 +316,9 @@ import { CommonModule } from '@angular/common';
 })
 export class HeaderComponent {
   notificationCount = 1;
+  isDropdownOpen = signal(false);
+
+  toggleDropdown() {
+    this.isDropdownOpen.set(!this.isDropdownOpen());
+  }
 }

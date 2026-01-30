@@ -39,7 +39,7 @@ interface NavItem {
   `,
   styles: [`
     .sidebar {
-      width: 180px;
+      width: 220px;
       height: 100vh;
       background: linear-gradient(180deg, #003d82 0%, #002d5e 100%);
       color: white;
