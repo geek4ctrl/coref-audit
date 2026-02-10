@@ -1,6 +1,15 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
+interface Document {
+  id: string;
+  title: string;
+  date: string;
+  category: string;
+  categoryColor: string;
+  imageUrl?: string;
+}
+
 interface DocumentSection {
   title: string;
   description: string;
@@ -9,6 +18,7 @@ interface DocumentSection {
   icon: string;
   emptyMessage: string;
   emptyIcon: string;
+  documents: Document[];
 }
 
 @Component({
@@ -42,11 +52,44 @@ interface DocumentSection {
 
           <div class="section-content">
             <div class="empty-state" *ngIf="section.count === 0">
-              <div class="empty-icon">{{ section.emptyIcon }}</div>
-              <p class="empty-message">{{ section.emptyMessage }}</p>
+              <div class="placeholder-image">
+                <svg viewBox="0 0 600 300" xmlns="http://www.w3.org/2000/svg">
+                  <!-- Background -->
+                  <rect width="600" height="300" fill="#e8e8e8"/>
+
+                  <!-- Image icon -->
+                  <g transform="translate(300, 150)">
+                    <!-- Mountain/landscape icon -->
+                    <path d="M-60,20 L-40,-10 L-20,10 L0,-20 L20,0 L40,-15 L60,20 Z" fill="#c0c0c0"/>
+                    <circle cx="-35" cy="-25" r="12" fill="#d0d0d0"/>
+                  </g>
+
+                  <!-- Text -->
+                  <text x="50%" y="75%" text-anchor="middle" fill="#999" font-size="16" font-family="Arial, sans-serif" font-weight="500">
+                    {{ section.emptyMessage }}
+                  </text>
+                </svg>
+              </div>
             </div>
-            <div class="documents-list" *ngIf="section.count > 0">
-              <!-- Documents will be displayed here -->
+            <div class="documents-grid" *ngIf="section.count > 0">
+              <div class="document-card" *ngFor="let doc of section.documents">
+                <div class="document-image">
+                  <svg viewBox="0 0 400 240" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="400" height="240" fill="#e0e0e0"/>
+                    <g transform="translate(200, 120)">
+                      <path d="M-50,20 L-30,-15 L-10,5 L10,-25 L30,-5 L50,15 Z" fill="#c0c0c0"/>
+                      <circle cx="-25" cy="-30" r="15" fill="#d0d0d0"/>
+                    </g>
+                  </svg>
+                </div>
+                <div class="document-content">
+                  <div class="document-meta">
+                    <span class="document-date">{{ doc.date }}</span>
+                    <span class="document-category" [style.color]="doc.categoryColor">{{ doc.category }}</span>
+                  </div>
+                  <h3 class="document-title">{{ doc.title }}</h3>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -175,21 +218,88 @@ interface DocumentSection {
       width: 100%;
     }
 
-    .empty-icon {
-      font-size: 64px;
-      margin-bottom: 16px;
-      opacity: 0.3;
-      filter: grayscale(100%);
+    .placeholder-image {
+      max-width: 700px;
+      margin: 0 auto;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      background: #e8e8e8;
+      border: 1px solid #ddd;
     }
 
-    .empty-message {
-      font-size: 15px;
-      color: #999;
-      margin: 0;
-    }
-
-    .documents-list {
+    .placeholder-image svg {
       width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .documents-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+      width: 100%;
+      padding: 4px;
+    }
+
+    .document-card {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+    }
+
+    .document-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+    }
+
+    .document-image {
+      width: 100%;
+      height: 180px;
+      background: #e0e0e0;
+      overflow: hidden;
+    }
+
+    .document-image svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .document-content {
+      padding: 16px 20px 20px;
+    }
+
+    .document-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid #f0f0f0;
+    }
+
+    .document-date {
+      font-size: 13px;
+      color: #666;
+    }
+
+    .document-category {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .document-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin: 0;
+      line-height: 1.4;
     }
 
     .stats-summary {
@@ -254,6 +364,10 @@ interface DocumentSection {
       .stat-count {
         font-size: 36px;
       }
+
+      .documents-grid {
+        grid-template-columns: 1fr;
+      }
     }
   `]
 })
@@ -262,29 +376,98 @@ export class ReceptionComponent {
     {
       title: 'Documents reçus',
       description: 'Nouveaux documents assignés à vous',
-      count: 0,
+      count: 3,
       color: '#3B82F6',
       icon: '📥',
       emptyMessage: 'Aucun nouveau document',
-      emptyIcon: '📭'
+      emptyIcon: '📭',
+      documents: [
+        {
+          id: '1',
+          title: 'Rapport Financier Annuel 2025',
+          date: '28 Jan 2026',
+          category: 'Rapport Financier',
+          categoryColor: '#3B82F6'
+        },
+        {
+          id: '2',
+          title: 'Procès-verbal de la Réunion du Conseil',
+          date: '25 Jan 2026',
+          category: 'Compte Rendu',
+          categoryColor: '#8B5CF6'
+        },
+        {
+          id: '3',
+          title: 'Note de Service: Nouvelles Procédures',
+          date: '22 Jan 2026',
+          category: 'Note de Service',
+          categoryColor: '#06B6D4'
+        }
+      ]
     },
     {
       title: 'À traiter',
       description: 'Documents nécessitant votre action',
-      count: 0,
+      count: 2,
       color: '#F97316',
       icon: '⚡',
       emptyMessage: 'Tous les documents ont été traités',
-      emptyIcon: '✓'
+      emptyIcon: '✓',
+      documents: [
+        {
+          id: '4',
+          title: 'Demande d\'Approbation Budgétaire',
+          date: '20 Jan 2026',
+          category: 'Demande',
+          categoryColor: '#F97316'
+        },
+        {
+          id: '5',
+          title: 'Contrat de Partenariat à Réviser',
+          date: '18 Jan 2026',
+          category: 'Contrat',
+          categoryColor: '#EF4444'
+        }
+      ]
     },
     {
       title: 'Documents envoyés',
       description: 'Documents que vous avez transmis',
-      count: 0,
+      count: 4,
       color: '#10B981',
       icon: '✈️',
       emptyMessage: 'Aucun document envoyé',
-      emptyIcon: '📤'
+      emptyIcon: '📤',
+      documents: [
+        {
+          id: '6',
+          title: 'Évaluation de Performance Q4 2025',
+          date: '30 Jan 2026',
+          category: 'Rapport',
+          categoryColor: '#10B981'
+        },
+        {
+          id: '7',
+          title: 'Recommandations Stratégiques',
+          date: '28 Jan 2026',
+          category: 'Stratégie',
+          categoryColor: '#14B8A6'
+        },
+        {
+          id: '8',
+          title: 'Directive Administrative',
+          date: '26 Jan 2026',
+          category: 'Directive',
+          categoryColor: '#059669'
+        },
+        {
+          id: '9',
+          title: 'Plan d\'Action Trimestriel',
+          date: '24 Jan 2026',
+          category: 'Planification',
+          categoryColor: '#0D9488'
+        }
+      ]
     }
   ];
 }
