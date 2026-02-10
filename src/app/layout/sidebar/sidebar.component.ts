@@ -9,6 +9,11 @@ interface NavItem {
   badge?: number;
 }
 
+interface NavSection {
+  title: string;
+  items: NavItem[];
+}
+
 @Component({
   selector: 'app-sidebar',
   imports: [CommonModule, RouterLink, RouterLinkActive],
@@ -17,31 +22,36 @@ interface NavItem {
       <div class="sidebar-header">
         <div class="logo">COREF</div>
         <div class="ministry">Ministère des Finances RDC</div>
-        <div class="app-title">Traçabilité des Documents</div>
+        <div class="app-title">Système de Traçabilité</div>
       </div>
 
-      <nav class="nav-menu">
-        @for (item of navItems; track item.route) {
-          <a
-            [routerLink]="item.route"
-            routerLinkActive="active"
-            class="nav-item"
-          >
-            <span class="nav-icon">{{ item.icon }}</span>
-            <span class="nav-label">{{ item.label }}</span>
-            @if (item.badge) {
-              <span class="badge">{{ item.badge }}</span>
+      @for (section of navSections; track section.title) {
+        <div class="nav-section">
+          <div class="section-title">{{ section.title }}</div>
+          <nav class="nav-menu">
+            @for (item of section.items; track item.route) {
+              <a
+                [routerLink]="item.route"
+                routerLinkActive="active"
+                class="nav-item"
+              >
+                <span class="nav-icon">{{ item.icon }}</span>
+                <span class="nav-label">{{ item.label }}</span>
+                @if (item.badge) {
+                  <span class="badge">{{ item.badge }}</span>
+                }
+              </a>
             }
-          </a>
-        }
-      </nav>
+          </nav>
+        </div>
+      }
     </aside>
   `,
   styles: [`
     .sidebar {
-      width: 220px;
+      width: 230px;
       height: 100vh;
-      background: linear-gradient(180deg, #003d82 0%, #002d5e 100%);
+      background: linear-gradient(180deg, #0a2d57 0%, #062244 100%);
       color: white;
       display: flex;
       flex-direction: column;
@@ -51,56 +61,69 @@ interface NavItem {
     }
 
     .sidebar-header {
-      padding: 24px 16px;
+      padding: 24px 18px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .logo {
-      font-size: 20px;
-      font-weight: bold;
+      font-size: 18px;
+      font-weight: 800;
       margin-bottom: 4px;
     }
 
     .ministry, .app-title {
-      font-size: 11px;
+      font-size: 10px;
       opacity: 0.9;
       line-height: 1.4;
     }
 
     .app-title {
-      color: #ffc107;
+      color: #f5c542;
       margin-top: 4px;
+    }
+
+    .nav-section {
+      padding: 14px 0 6px;
+    }
+
+    .section-title {
+      padding: 0 18px 8px;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.6);
     }
 
     .nav-menu {
       flex: 1;
-      padding: 8px 0;
+      padding: 0 8px;
     }
 
     .nav-item {
       display: flex;
       align-items: center;
-      padding: 12px 16px;
+      padding: 10px 12px;
       color: white;
       text-decoration: none;
       font-size: 13px;
       transition: all 0.2s;
       position: relative;
       gap: 12px;
+      border-radius: 12px;
     }
 
     .nav-item:hover {
-      background-color: rgba(255, 255, 255, 0.1);
+      background-color: rgba(255, 255, 255, 0.12);
     }
 
     .nav-item.active {
-      background-color: #ffc107;
-      color: #003d82;
-      font-weight: 600;
+      background-color: #f5c542;
+      color: #0b2f5c;
+      font-weight: 700;
     }
 
     .nav-icon {
-      font-size: 18px;
+      font-size: 16px;
       width: 20px;
       display: flex;
       align-items: center;
@@ -112,7 +135,7 @@ interface NavItem {
     }
 
     .badge {
-      background-color: #dc3545;
+      background-color: #ef4444;
       color: white;
       border-radius: 10px;
       padding: 2px 6px;
@@ -137,7 +160,7 @@ interface NavItem {
 
     @media (max-width: 1024px) {
       .sidebar {
-        width: 160px;
+        width: 180px;
       }
 
       .nav-item {
@@ -148,13 +171,25 @@ interface NavItem {
   `]
 })
 export class SidebarComponent {
-  navItems: NavItem[] = [
-    { label: 'Tableau de bord', route: '/dashboard', icon: '📊' },
-    { label: 'Réception / Statut', route: '/reception', icon: '📥', badge: 3 },
-    { label: 'Envoi de Documents', route: '/envoi', icon: '📤' },
-    { label: 'Catégories', route: '/categories', icon: '📁' },
-    { label: 'Nouveau Document', route: '/nouveau', icon: '📄' },
-    { label: 'Espace Réception', route: '/espace-reception', icon: '📮' },
-    { label: 'Utilisateurs', route: '/utilisateurs', icon: '👥' }
+  navSections: NavSection[] = [
+    {
+      title: 'CHEF / SG',
+      items: [
+        { label: 'Dashboard', route: '/dashboard', icon: '📊' },
+        { label: 'Documents', route: '/reception', icon: '📄', badge: 3 },
+        { label: 'Recherche', route: '/categories', icon: '🔍' },
+        { label: 'Envoyer / Router', route: '/envoi', icon: '📤' },
+        { label: 'Relances', route: '/espace-reception', icon: '🔔' },
+        { label: 'Retards', route: '/nouveau', icon: '⏱️' }
+      ]
+    },
+    {
+      title: 'ADMINISTRATION',
+      items: [
+        { label: 'Utilisateurs', route: '/utilisateurs', icon: '👥' },
+        { label: 'Rôles & Permissions', route: '/categories', icon: '🛡️' },
+        { label: 'Services & Piliers', route: '/espace-reception', icon: '🏛️' }
+      ]
+    }
   ];
 }

@@ -22,7 +22,7 @@ import { HeaderComponent } from './header/header.component';
       display: flex;
       height: 100vh;
       width: 100vw;
-      background-color: #f5f5f5;
+      background: radial-gradient(circle at top, #f8fafc 0%, #eef2f7 45%, #e9eef5 100%);
       overflow: hidden;
     }
 
@@ -35,9 +35,9 @@ import { HeaderComponent } from './header/header.component';
 
     .content-area {
       flex: 1;
-      padding: 20px 24px;
+      padding: 22px 26px;
       overflow-y: auto;
-      background-color: #f5f5f5;
+      background: transparent;
     }
 
     @media (max-width: 768px) {

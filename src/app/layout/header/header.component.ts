@@ -12,7 +12,7 @@ import { CommonModule } from '@angular/common';
       </div>
 
       <div class="header-actions">
-        <button class="notification-btn">
+        <button class="notification-btn" aria-label="Notifications">
           🔔
           @if (notificationCount > 0) {
             <span class="notification-badge">{{ notificationCount }}</span>
@@ -21,10 +21,10 @@ import { CommonModule } from '@angular/common';
 
         <div class="user-profile-container">
           <div class="user-profile" (click)="toggleDropdown()">
-            <div class="user-avatar">SG</div>
+            <div class="user-avatar">JN</div>
             <div class="user-info">
-              <div class="user-name">Secrétaire Général</div>
-              <div class="user-role">Chef/SG</div>
+              <div class="user-name">Joseph Papy Nkulani</div>
+              <div class="user-role">Admin</div>
             </div>
             <span class="dropdown-icon" [class.rotated]="isDropdownOpen()">▼</span>
           </div>
@@ -32,10 +32,10 @@ import { CommonModule } from '@angular/common';
           @if (isDropdownOpen()) {
             <div class="dropdown-menu">
               <div class="dropdown-header">
-                <div class="dropdown-user-avatar">SG</div>
+                <div class="dropdown-user-avatar">JN</div>
                 <div class="dropdown-user-info">
-                  <div class="dropdown-user-name">Secrétaire Général</div>
-                  <div class="dropdown-user-email">sg@finances.gouv.cd</div>
+                  <div class="dropdown-user-name">Joseph Papy Nkulani</div>
+                  <div class="dropdown-user-email">jp.nkulani@finances.gouv.cd</div>
                 </div>
               </div>
               <div class="dropdown-divider"></div>
@@ -56,34 +56,34 @@ import { CommonModule } from '@angular/common';
   `,
   styles: [`
     .header {
-      background-color: white;
-      padding: 12px 32px;
+      background-color: #ffffff;
+      padding: 12px 28px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-      border-bottom: 1px solid #e0e0e0;
+      box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06);
+      border-bottom: 1px solid #e5e7eb;
       min-height: 64px;
       flex-shrink: 0;
     }
 
     .header-title h1 {
       margin: 0;
-      font-size: 18px;
-      font-weight: 600;
-      color: #1a1a1a;
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
     }
 
     .subtitle {
       margin: 2px 0 0;
-      font-size: 12px;
-      color: #666;
+      font-size: 11px;
+      color: #64748b;
     }
 
     .header-actions {
       display: flex;
       align-items: center;
-      gap: 20px;
+      gap: 16px;
       position: relative;
     }
 
@@ -93,28 +93,28 @@ import { CommonModule } from '@angular/common';
 
     .notification-btn {
       position: relative;
-      background: none;
-      border: none;
-      font-size: 20px;
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      font-size: 16px;
       cursor: pointer;
-      padding: 8px;
-      border-radius: 50%;
+      padding: 8px 10px;
+      border-radius: 12px;
       transition: background-color 0.2s;
     }
 
     .notification-btn:hover {
-      background-color: #f5f5f5;
+      background-color: #e2e8f0;
     }
 
     .notification-badge {
       position: absolute;
-      top: 4px;
-      right: 4px;
-      background-color: #dc3545;
+      top: -2px;
+      right: -2px;
+      background-color: #e11d48;
       color: white;
-      border-radius: 10px;
+      border-radius: 999px;
       padding: 2px 5px;
-      font-size: 10px;
+      font-size: 9px;
       font-weight: bold;
       min-width: 16px;
       text-align: center;
@@ -123,28 +123,30 @@ import { CommonModule } from '@angular/common';
     .user-profile {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       cursor: pointer;
-      padding: 8px 12px;
-      border-radius: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid #e5e7eb;
+      background: #f8fafc;
       transition: background-color 0.2s;
     }
 
     .user-profile:hover {
-      background-color: #f5f5f5;
+      background-color: #e2e8f0;
     }
 
     .user-avatar {
-      width: 40px;
-      height: 40px;
+      width: 32px;
+      height: 32px;
       border-radius: 50%;
-      background-color: #ffc107;
+      background-color: #f5c542;
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: bold;
-      color: #003d82;
-      font-size: 14px;
+      color: #0b3a78;
+      font-size: 12px;
     }
 
     .user-info {
@@ -153,14 +155,16 @@ import { CommonModule } from '@angular/common';
     }
 
     .user-name {
-      font-size: 14px;
-      font-weight: 600;
-      color: #1a1a1a;
+      font-size: 12px;
+      font-weight: 700;
+      color: #0f172a;
     }
 
     .user-role {
-      font-size: 12px;
-      color: #666;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #64748b;
       transition: transform 0.2s;
     }
 
@@ -174,7 +178,7 @@ import { CommonModule } from '@angular/common';
       right: 0;
       background: white;
       border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.18);
       min-width: 260px;
       z-index: 1000;
       padding: 8px 0;
@@ -203,12 +207,12 @@ import { CommonModule } from '@angular/common';
       width: 40px;
       height: 40px;
       border-radius: 50%;
-      background-color: #ffc107;
+      background-color: #f5c542;
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: bold;
-      color: #003d82;
+      color: #0b3a78;
       font-size: 14px;
       flex-shrink: 0;
     }
@@ -237,7 +241,7 @@ import { CommonModule } from '@angular/common';
 
     .dropdown-divider {
       height: 1px;
-      background-color: #e0e0e0;
+      background-color: #e5e7eb;
       margin: 8px 0;
     }
 
@@ -251,13 +255,13 @@ import { CommonModule } from '@angular/common';
       background: none;
       cursor: pointer;
       transition: background-color 0.2s;
-      font-size: 14px;
-      color: #1a1a1a;
+      font-size: 13px;
+      color: #0f172a;
       text-align: left;
     }
 
     .dropdown-item:hover {
-      background-color: #f5f5f5;
+      background-color: #f1f5f9;
     }
 
     .dropdown-item.danger {
@@ -278,7 +282,7 @@ import { CommonModule } from '@angular/common';
 
     .dropdown-icon {
       font-size: 10px;
-      color: #666;
+      color: #64748b;
     }
 
     @media (max-width: 768px) {
@@ -287,11 +291,11 @@ import { CommonModule } from '@angular/common';
       }
 
       .header-title h1 {
-        font-size: 14px;
+        font-size: 12px;
       }
 
       .subtitle {
-        font-size: 10px;
+        font-size: 9px;
       }
 
       .user-info {

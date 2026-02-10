@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+
 /* Global styles */
 * {
   margin: 0;
@@ -29,7 +31,7 @@ html, body {
 }
 
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Manrope', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: var(--text-dark);
   background-color: var(--bg-light);
   line-height: 1.5;
