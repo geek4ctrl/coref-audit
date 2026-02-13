@@ -9,6 +9,7 @@ import { EspaceReceptionComponent } from './pages/espace-reception/espace-recept
 import { UtilisateursComponent } from './pages/utilisateurs/utilisateurs.component';
 import { RechercheComponent } from './pages/recherche/recherche.component';
 import { DocumentsComponent } from './pages/documents/documents.component';
+import { RelancesComponent } from './pages/relances/relances.component';
 
 export const routes: Routes = [
   {
@@ -22,6 +23,7 @@ export const routes: Routes = [
       { path: 'envoi', component: EnvoiComponent },
       { path: 'categories', component: CategoriesComponent },
       { path: 'recherche', component: RechercheComponent },
+      { path: 'relances', component: RelancesComponent },
       { path: 'nouveau', component: NouveauDocumentComponent },
       { path: 'espace-reception', component: EspaceReceptionComponent },
       { path: 'utilisateurs', component: UtilisateursComponent }

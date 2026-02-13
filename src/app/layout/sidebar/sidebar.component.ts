@@ -179,7 +179,7 @@ export class SidebarComponent {
         { label: 'Documents', route: '/documents', icon: '📄', badge: 3 },
         { label: 'Recherche', route: '/recherche', icon: '🔍' },
         { label: 'Envoyer / Router', route: '/envoi', icon: '📤' },
-        { label: 'Relances', route: '/espace-reception', icon: '🔔' },
+        { label: 'Relances', route: '/relances', icon: '🔔' },
         { label: 'Retards', route: '/nouveau', icon: '⏱️' }
       ]
     },
@@ -187,8 +187,7 @@ export class SidebarComponent {
       title: 'ADMINISTRATION',
       items: [
         { label: 'Utilisateurs', route: '/utilisateurs', icon: '👥' },
-        { label: 'Rôles & Permissions', route: '/categories', icon: '🛡️' },
-        { label: 'Services & Piliers', route: '/espace-reception', icon: '🏛️' }
+        { label: 'Rôles & Permissions', route: '/categories', icon: '🛡️' }
       ]
     }
   ];
