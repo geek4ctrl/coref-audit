@@ -176,7 +176,7 @@ export class SidebarComponent {
       title: 'CHEF / SG',
       items: [
         { label: 'Dashboard', route: '/dashboard', icon: '📊' },
-        { label: 'Documents', route: '/reception', icon: '📄', badge: 3 },
+        { label: 'Documents', route: '/documents', icon: '📄', badge: 3 },
         { label: 'Recherche', route: '/recherche', icon: '🔍' },
         { label: 'Envoyer / Router', route: '/envoi', icon: '📤' },
         { label: 'Relances', route: '/espace-reception', icon: '🔔' },
