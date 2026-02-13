@@ -8,6 +8,7 @@ import { NouveauDocumentComponent } from './pages/nouveau-document/nouveau-docum
 import { EspaceReceptionComponent } from './pages/espace-reception/espace-reception.component';
 import { UtilisateursComponent } from './pages/utilisateurs/utilisateurs.component';
 import { RechercheComponent } from './pages/recherche/recherche.component';
+import { DocumentsComponent } from './pages/documents/documents.component';
 
 export const routes: Routes = [
   {
@@ -16,6 +17,7 @@ export const routes: Routes = [
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: 'dashboard', component: DashboardComponent },
+      { path: 'documents', component: DocumentsComponent },
       { path: 'reception', component: ReceptionComponent },
       { path: 'envoi', component: EnvoiComponent },
       { path: 'categories', component: CategoriesComponent },
