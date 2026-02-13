@@ -180,7 +180,7 @@ export class SidebarComponent {
         { label: 'Recherche', route: '/recherche', icon: '🔍' },
         { label: 'Envoyer / Router', route: '/envoi', icon: '📤' },
         { label: 'Relances', route: '/espace-reception', icon: '🔔' },
-        { label: 'Retards', route: '/nouveau', icon: '⏱️' }
+        { label: 'Retards', route: '/retards', icon: '⏱️' }
       ]
     },
     {

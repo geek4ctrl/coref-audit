@@ -9,6 +9,7 @@ import { EspaceReceptionComponent } from './pages/espace-reception/espace-recept
 import { UtilisateursComponent } from './pages/utilisateurs/utilisateurs.component';
 import { RechercheComponent } from './pages/recherche/recherche.component';
 import { DocumentsComponent } from './pages/documents/documents.component';
+import { RetardsComponent } from './pages/retards/retards.component';
 
 export const routes: Routes = [
   {
@@ -24,6 +25,7 @@ export const routes: Routes = [
       { path: 'recherche', component: RechercheComponent },
       { path: 'nouveau', component: NouveauDocumentComponent },
       { path: 'espace-reception', component: EspaceReceptionComponent },
+      { path: 'retards', component: RetardsComponent },
       { path: 'utilisateurs', component: UtilisateursComponent }
     ]
   }
