@@ -177,7 +177,7 @@ export class SidebarComponent {
       items: [
         { label: 'Dashboard', route: '/dashboard', icon: '📊' },
         { label: 'Documents', route: '/reception', icon: '📄', badge: 3 },
-        { label: 'Recherche', route: '/categories', icon: '🔍' },
+        { label: 'Recherche', route: '/recherche', icon: '🔍' },
         { label: 'Envoyer / Router', route: '/envoi', icon: '📤' },
         { label: 'Relances', route: '/espace-reception', icon: '🔔' },
         { label: 'Retards', route: '/nouveau', icon: '⏱️' }
