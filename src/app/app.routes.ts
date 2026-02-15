@@ -11,8 +11,10 @@ import { RechercheComponent } from './pages/recherche/recherche.component';
 import { DocumentsComponent } from './pages/documents/documents.component';
 import { RetardsComponent } from './pages/retards/retards.component';
 import { RelancesComponent } from './pages/relances/relances.component';
+import { LoginComponent } from './pages/login/login.component';
 
 export const routes: Routes = [
+  { path: 'login', component: LoginComponent },
   {
     path: '',
     component: DashboardLayoutComponent,
