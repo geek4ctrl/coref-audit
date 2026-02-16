@@ -1,10 +1,13 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+import { AuthService } from '../../auth/auth.service';
 
 @Component({
   selector: 'app-login',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="login-page">
       <div class="login-hero">
@@ -21,7 +24,12 @@ import { CommonModule } from '@angular/common';
           <span class="field-label">Adresse email</span>
           <div class="field-input">
             <span class="field-icon">✉</span>
-            <input type="email" placeholder="votre.email@finances.gouv.cd" />
+            <input
+              type="email"
+              placeholder="votre.email@finances.gouv.cd"
+              [(ngModel)]="email"
+              name="email"
+            />
           </div>
         </label>
 
@@ -29,21 +37,30 @@ import { CommonModule } from '@angular/common';
           <span class="field-label">Mot de passe</span>
           <div class="field-input">
             <span class="field-icon">🔒</span>
-            <input type="password" placeholder="••••••••" />
+            <input
+              type="password"
+              placeholder="••••••••"
+              [(ngModel)]="password"
+              name="password"
+            />
           </div>
         </label>
 
         <div class="field-row">
           <label class="checkbox">
-            <input type="checkbox" />
+            <input type="checkbox" [(ngModel)]="remember" name="remember" />
             <span>Se souvenir de moi</span>
           </label>
           <button class="link-btn" type="button">Mot de passe oublié?</button>
         </div>
 
-        <button class="primary-btn" type="button">
+        @if (errorMessage()) {
+          <div class="error-message">{{ errorMessage() }}</div>
+        }
+
+        <button class="primary-btn" type="button" (click)="onSubmit()" [disabled]="isSubmitting()">
           <span class="btn-icon">↪</span>
-          Se connecter
+          {{ isSubmitting() ? 'Connexion...' : 'Se connecter' }}
         </button>
 
         <div class="register">
@@ -180,6 +197,15 @@ import { CommonModule } from '@angular/common';
       padding: 0;
     }
 
+    .error-message {
+      background: #fee2e2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 11px;
+    }
+
     .primary-btn {
       background: #0b3a78;
       color: #ffffff;
@@ -192,6 +218,11 @@ import { CommonModule } from '@angular/common';
       align-items: center;
       justify-content: center;
       gap: 8px;
+    }
+
+    .primary-btn:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
     }
 
     .btn-icon {
@@ -217,4 +248,33 @@ import { CommonModule } from '@angular/common';
     }
   `]
 })
-export class LoginComponent {}
+export class LoginComponent {
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+  email = '';
+  password = '';
+  remember = true;
+  errorMessage = signal('');
+  isSubmitting = signal(false);
+
+  onSubmit() {
+    this.errorMessage.set('');
+
+    if (!this.email || !this.password) {
+      this.errorMessage.set('Email and password are required.');
+      return;
+    }
+
+    this.isSubmitting.set(true);
+    this.authService.login(this.email, this.password, this.remember).subscribe({
+      next: () => {
+        this.isSubmitting.set(false);
+        this.router.navigate(['/dashboard']);
+      },
+      error: () => {
+        this.isSubmitting.set(false);
+        this.errorMessage.set('Invalid credentials.');
+      }
+    });
+  }
+}
