@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-enregistrer-courrier',
@@ -14,23 +15,23 @@ import { FormsModule } from '@angular/forms';
       </header>
 
       <section class="stepper" aria-label="Progression des étapes">
-        <div class="step active">
-          <span class="step-index">1</span>
+        <div class="step clickable" [class.active]="currentStep === 1" (click)="goToStep(1)">
+          <span class="step-index">{{ currentStep > 1 ? '✓' : '1' }}</span>
           <div>
             <p class="step-title">Informations</p>
             <p class="step-subtitle">Détails du courrier</p>
           </div>
         </div>
         <span class="step-sep">›</span>
-        <div class="step">
-          <span class="step-index">2</span>
+        <div class="step clickable" [class.active]="currentStep === 2" (click)="goToStep(2)">
+          <span class="step-index">{{ currentStep > 2 ? '✓' : '2' }}</span>
           <div>
             <p class="step-title">Scan / Upload</p>
             <p class="step-subtitle">Document numérique</p>
           </div>
         </div>
         <span class="step-sep">›</span>
-        <div class="step">
+        <div class="step clickable" [class.active]="currentStep === 3" (click)="goToStep(3)">
           <span class="step-index">3</span>
           <div>
             <p class="step-title">Distribution</p>
@@ -40,6 +41,7 @@ import { FormsModule } from '@angular/forms';
       </section>
 
       <section class="card">
+        @if (currentStep === 1) {
         <h2 class="card-title">Étape 1 : Informations du courrier</h2>
 
         <div class="grid two">
@@ -112,15 +114,99 @@ import { FormsModule } from '@angular/forms';
           <textarea rows="3" placeholder="Résumé du contenu du document..." [(ngModel)]="description" name="description"></textarea>
         </label>
 
-        <label class="field">
-          <span>Niveau de confidentialité</span>
-          <select [(ngModel)]="confidentialite" name="confidentialite">
-            <option>Public</option>
-            <option>Interne</option>
-            <option>Confidentiel</option>
-          </select>
-        </label>
+          <label class="field">
+            <span>Niveau de confidentialité</span>
+            <select [(ngModel)]="confidentialite" name="confidentialite">
+              <option>Public</option>
+              <option>Interne</option>
+              <option>Confidentiel</option>
+            </select>
+          </label>
+        }
+
+        @if (currentStep === 2) {
+          <h2 class="card-title">Étape 2 : Scanner ou uploader le document</h2>
+
+          <div class="upload-zone">
+            <div class="upload-icon">⇪</div>
+            <p class="upload-title">Glissez-déposez votre fichier ici</p>
+            <p class="upload-subtitle">ou cliquez pour sélectionner un fichier</p>
+
+            <input #scanFileInput type="file" accept=".pdf,.jpg,.jpeg,.png" class="hidden-input" (change)="onFileSelected($event)" />
+            <button type="button" class="upload-btn" (click)="scanFileInput.click()">Sélectionner un fichier</button>
+
+            <p class="upload-help">PDF ou Image (JPG, PNG) • Max 10 MB</p>
+
+            @if (fichierNom) {
+              <p class="file-info">Fichier sélectionné : {{ fichierNom }}</p>
+            }
+          </div>
+
+          <div class="scan-note">
+            <p><strong>Note :</strong> Cette étape est optionnelle. Vous pouvez scanner le document plus tard et l'ajouter via la page "Distributions".</p>
+          </div>
+        }
+
+        @if (currentStep === 3) {
+          <h2 class="card-title">Étape 3 : Assigner et distribuer</h2>
+
+          <label class="field">
+            <span>Destinataire *</span>
+            <select [(ngModel)]="destinataire" name="destinataire">
+              <option value="">Sélectionner un destinataire</option>
+              <option>Cabinet du Ministre</option>
+              <option>Direction du Budget</option>
+              <option>Direction des Ressources Humaines</option>
+              <option>Secrétariat Général</option>
+            </select>
+          </label>
+
+          <div class="field">
+            <span>Mode de remise</span>
+            <div class="delivery-modes">
+              <button type="button" class="mode-btn" [class.selected]="modeRemise === 'soft'" (click)="modeRemise = 'soft'">
+                <strong>Copie soft</strong>
+                <small>Numérique uniquement</small>
+              </button>
+              <button type="button" class="mode-btn" [class.selected]="modeRemise === 'hard'" (click)="modeRemise = 'hard'">
+                <strong>Copie hard</strong>
+                <small>Papier uniquement</small>
+              </button>
+              <button type="button" class="mode-btn" [class.selected]="modeRemise === 'both'" (click)="modeRemise = 'both'">
+                <strong>Les deux</strong>
+                <small>Numérique + Papier</small>
+              </button>
+            </div>
+          </div>
+
+          <label class="field">
+            <span>Commentaire / Note de distribution</span>
+            <textarea rows="3" placeholder="Ex: Document urgent à traiter avant le 15/02/2025" [(ngModel)]="instructions" name="instructions"></textarea>
+          </label>
+
+          <div class="recap">
+            <h3>Récapitulatif</h3>
+            <div class="recap-grid">
+              <span>Type :</span><strong>{{ typeDocument }}</strong>
+              <span>Objet :</span><strong>{{ objet || '-' }}</strong>
+              <span>Expéditeur :</span><strong>{{ nomExpediteur || '-' }}</strong>
+              <span>Fichier :</span><strong>{{ fichierNom || 'Aucun fichier' }}</strong>
+              <span>Destinataire :</span><strong>{{ destinataire || '-' }}</strong>
+            </div>
+          </div>
+        }
       </section>
+
+      <div class="actions">
+        <button type="button" class="btn-cancel" (click)="onPrevious()">{{ currentStep === 1 ? 'Annuler' : 'Précédent' }}</button>
+        <button
+          type="button"
+          [class]="currentStep === 3 ? 'btn-finish' : 'btn-next'"
+          (click)="onNext()"
+        >
+          {{ currentStep === 3 ? '⬡ Enregistrer et distribuer' : 'Suivant' }}
+        </button>
+      </div>
     </div>
   `,
   styles: [`
@@ -163,6 +249,16 @@ import { FormsModule } from '@angular/forms';
       min-width: 210px;
     }
 
+    .step.clickable {
+      cursor: pointer;
+      border-radius: 8px;
+      padding: 2px 4px;
+    }
+
+    .step.clickable:hover {
+      background: #f8fafc;
+    }
+
     .step-index {
       width: 30px;
       height: 30px;
@@ -180,6 +276,11 @@ import { FormsModule } from '@angular/forms';
     .step.active .step-index {
       background: #0b3a78;
       color: #fff;
+    }
+
+    .step.clickable:not(.active) .step-index {
+      background: #e2e8f0;
+      color: #64748b;
     }
 
     .step-title {
@@ -265,14 +366,209 @@ import { FormsModule } from '@angular/forms';
       min-height: 80px;
     }
 
+    .upload-zone {
+      border: 2px dashed #cbd5e1;
+      border-radius: 12px;
+      padding: 28px 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 8px;
+      background: #ffffff;
+    }
+
+    .upload-icon {
+      font-size: 34px;
+      color: #94a3b8;
+      line-height: 1;
+    }
+
+    .upload-title {
+      margin: 0;
+      color: #0f172a;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .upload-subtitle {
+      margin: 0;
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .hidden-input {
+      display: none;
+    }
+
+    .upload-btn {
+      border: 0;
+      border-radius: 10px;
+      background: #0b3a78;
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 10px 16px;
+      cursor: pointer;
+      min-width: 170px;
+    }
+
+    .upload-help {
+      margin: 0;
+      color: #64748b;
+      font-size: 13px;
+    }
+
+    .file-info {
+      margin: 2px 0 0;
+      font-size: 12px;
+      color: #0b3a78;
+      font-weight: 600;
+    }
+
+    .delivery-modes {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .mode-btn {
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      background: #ffffff;
+      padding: 14px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      color: #0f172a;
+    }
+
+    .mode-btn strong {
+      font-size: 14px;
+    }
+
+    .mode-btn small {
+      font-size: 12px;
+      color: #475569;
+    }
+
+    .mode-btn.selected {
+      border-color: #0b3a78;
+      box-shadow: inset 0 0 0 1px #0b3a78;
+      background: #f8fbff;
+    }
+
+    .recap {
+      border: 1px solid #dbe3ef;
+      border-radius: 10px;
+      padding: 12px;
+      background: #ffffff;
+    }
+
+    .recap h3 {
+      margin: 0 0 10px;
+      color: #0f172a;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .recap-grid {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: 6px 10px;
+      font-size: 14px;
+      color: #334155;
+    }
+
+    .recap-grid strong {
+      color: #0f172a;
+      font-weight: 600;
+    }
+
+    .scan-note {
+      border: 1px solid #93c5fd;
+      background: #eff6ff;
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+
+    .scan-note p {
+      margin: 0;
+      color: #1d4ed8;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-top: 4px;
+      padding: 0 2px;
+    }
+
+    .btn-cancel,
+    .btn-next {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-cancel {
+      background: transparent;
+      color: #334155;
+    }
+
+    .btn-next {
+      background: #0b3a78;
+      color: #ffffff;
+      min-width: 110px;
+    }
+
+    .btn-finish {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      background: #f5c542;
+      color: #0f172a;
+      min-width: 220px;
+    }
+
     @media (max-width: 900px) {
       .grid.two {
         grid-template-columns: 1fr;
+      }
+
+      .delivery-modes {
+        grid-template-columns: 1fr;
+      }
+
+      .recap-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .actions {
+        position: sticky;
+        bottom: 0;
+        background: #f1f5f9;
+        padding: 8px 2px;
       }
     }
   `]
 })
 export class EnregistrerCourrierComponent {
+  private readonly router = inject(Router);
+  currentStep = 1;
+
   typeDocument = "Courrier d'arrivée";
   priorite = 'Normal';
   nomExpediteur = '';
@@ -282,4 +578,40 @@ export class EnregistrerCourrierComponent {
   objet = '';
   description = '';
   confidentialite = 'Public';
+  fichierNom = '';
+  commentaireScan = '';
+  destinataire = '';
+  modeRemise: 'soft' | 'hard' | 'both' = 'both';
+  instructions = '';
+
+  goToStep(step: number) {
+    this.currentStep = step;
+  }
+
+  onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    this.fichierNom = input.files?.[0]?.name ?? '';
+  }
+
+  onCancel() {
+    this.router.navigate(['/reception']);
+  }
+
+  onPrevious() {
+    if (this.currentStep === 1) {
+      this.onCancel();
+      return;
+    }
+
+    this.currentStep -= 1;
+  }
+
+  onNext() {
+    if (this.currentStep < 3) {
+      this.currentStep += 1;
+      return;
+    }
+
+    this.router.navigate(['/distributions']);
+  }
 }
