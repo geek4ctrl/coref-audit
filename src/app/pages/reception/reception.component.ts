@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { AuthService, API_BASE_URL } from '../../auth/auth.service';
 
 interface StatCard {
@@ -8,7 +9,7 @@ interface StatCard {
   subtitle: string;
   icon: string;
   accent: 'blue' | 'orange' | 'sky' | 'purple';
-  action?: 'openCreateModal' | 'none';
+  action?: 'openCreateModal' | 'goToBordereaux' | 'goToDistributions' | 'none';
 }
 
 interface SummaryCard {
@@ -65,7 +66,7 @@ interface ReceptionCreatePayload {
           <article
             class="stat-card"
             [class.active]="$index === 0"
-            [class.clickable]="card.action === 'openCreateModal'"
+            [class.clickable]="card.action !== 'none'"
             (click)="onStatCardClick(card)"
           >
             <div [class]="'stat-icon ' + card.accent">{{ card.icon }}</div>
@@ -790,6 +791,7 @@ interface ReceptionCreatePayload {
 export class ReceptionComponent {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
   isCreateModalOpen = signal(false);
   selectedDocumentType = signal<'EXTERNE' | 'PILIER'>('EXTERNE');
@@ -808,9 +810,9 @@ export class ReceptionComponent {
 
   statCards: StatCard[] = [
     { value: 0, subtitle: 'Entrées du jour', icon: '◈', accent: 'blue', action: 'none' },
-    { value: 1, subtitle: 'À scanner', icon: '⬚', accent: 'orange', action: 'openCreateModal' },
-    { value: 1, subtitle: 'À distribuer', icon: '➤', accent: 'sky', action: 'none' },
-    { value: 0, subtitle: 'Bordereaux en attente', icon: '⬒', accent: 'purple', action: 'none' }
+    { value: 1, subtitle: 'À scanner', icon: '⬚', accent: 'orange', action: 'goToBordereaux' },
+    { value: 1, subtitle: 'À distribuer', icon: '➤', accent: 'sky', action: 'goToDistributions' },
+    { value: 0, subtitle: 'Bordereaux en attente', icon: '⬒', accent: 'purple', action: 'goToBordereaux' }
   ];
 
   summaryCards: SummaryCard[] = [
@@ -888,6 +890,16 @@ export class ReceptionComponent {
   onStatCardClick(card: StatCard) {
     if (card.action === 'openCreateModal') {
       this.openCreateModal();
+      return;
+    }
+
+    if (card.action === 'goToBordereaux') {
+      this.router.navigate(['/bordereaux']);
+      return;
+    }
+
+    if (card.action === 'goToDistributions') {
+      this.router.navigate(['/distributions']);
     }
   }
 
