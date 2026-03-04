@@ -269,7 +269,7 @@ export class LoginComponent {
     this.authService.login(this.email, this.password, this.remember).subscribe({
       next: () => {
         this.isSubmitting.set(false);
-        this.router.navigate(['/dashboard']);
+        this.router.navigate([this.authService.getDefaultRoute(this.authService.getRole())]);
       },
       error: () => {
         this.isSubmitting.set(false);

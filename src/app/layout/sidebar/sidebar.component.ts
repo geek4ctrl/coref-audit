@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { AuthService, UserRole } from '../../auth/auth.service';
 
 interface NavItem {
   label: string;
@@ -25,7 +26,7 @@ interface NavSection {
         <div class="app-title">Système de Traçabilité</div>
       </div>
 
-      @for (section of navSections; track section.title) {
+      @for (section of navSections(); track section.title) {
         <div class="nav-section">
           <div class="section-title">{{ section.title }}</div>
           <nav class="nav-menu">
@@ -171,25 +172,43 @@ interface NavSection {
   `]
 })
 export class SidebarComponent {
-  navSections: NavSection[] = [
-    {
-      title: 'CHEF / SG',
-      items: [
-        { label: 'Dashboard', route: '/dashboard', icon: '📊' },
-        { label: 'Documents', route: '/documents', icon: '📄', badge: 3 },
-        { label: 'Recherche', route: '/recherche', icon: '🔍' },
-        { label: 'Envoyer / Router', route: '/envoi', icon: '📤' },
-        { label: 'Relances', route: '/relances', icon: '🔔' },
-        { label: 'Retards', route: '/retards', icon: '⏱️' }
-      ]
-    },
-    {
-      title: 'ADMINISTRATION',
-      items: [
-        { label: 'Utilisateurs', route: '/utilisateurs', icon: '👥' },
-        { label: 'Rôles & Permissions', route: '/categories', icon: '🛡️' },
-        { label: 'Services & Piliers', route: '/services', icon: '🏛️' }
-      ]
+  private readonly authService = inject(AuthService);
+
+  readonly navSections = computed<NavSection[]>(() => this.buildNavSections(this.authService.getRole()));
+
+  private buildNavSections(role: UserRole | null): NavSection[] {
+    if (role === 'RECEPTION') {
+      return [
+        {
+          title: 'RECEPTION',
+          items: [
+            { label: 'Réception', route: '/reception', icon: '📥' },
+            { label: 'Recherche', route: '/recherche', icon: '🔍' }
+          ]
+        }
+      ];
     }
-  ];
+
+    return [
+      {
+        title: 'CHEF / SG',
+        items: [
+          { label: 'Dashboard', route: '/dashboard', icon: '📊' },
+          { label: 'Documents', route: '/documents', icon: '📄', badge: 3 },
+          { label: 'Recherche', route: '/recherche', icon: '🔍' },
+          { label: 'Envoyer / Router', route: '/envoi', icon: '📤' },
+          { label: 'Relances', route: '/relances', icon: '🔔' },
+          { label: 'Retards', route: '/retards', icon: '⏱️' }
+        ]
+      },
+      {
+        title: 'ADMINISTRATION',
+        items: [
+          { label: 'Utilisateurs', route: '/utilisateurs', icon: '👥' },
+          { label: 'Rôles & Permissions', route: '/categories', icon: '🛡️' },
+          { label: 'Services & Piliers', route: '/services', icon: '🏛️' }
+        ]
+      }
+    ];
+  }
 }
