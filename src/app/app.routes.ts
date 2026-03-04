@@ -12,7 +12,7 @@ import { DocumentsComponent } from './pages/documents/documents.component';
 import { RetardsComponent } from './pages/retards/retards.component';
 import { RelancesComponent } from './pages/relances/relances.component';
 import { LoginComponent } from './pages/login/login.component';
-import { authGuard } from './auth/auth.guard';
+import { authChildGuard, authGuard } from './auth/auth.guard';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -20,6 +20,7 @@ export const routes: Routes = [
     path: '',
     component: DashboardLayoutComponent,
     canActivate: [authGuard],
+    canActivateChild: [authChildGuard],
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       {
