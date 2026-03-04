@@ -212,7 +212,7 @@ export class SidebarComponent {
           title: 'GUICHET RÉCEPTION',
           items: [
             { label: 'Dashboard', route: '/reception', icon: '⌘' },
-            { label: 'Enregistrer un courrier', route: '/reception', icon: '📦' },
+            { label: 'Enregistrer un courrier', route: '/enregistrer-courrier', icon: '📦' },
             { label: 'Distributions', route: '/distributions', icon: '📨' },
             { label: 'Bordereaux', route: '/bordereaux', icon: '🧾' }
           ]
