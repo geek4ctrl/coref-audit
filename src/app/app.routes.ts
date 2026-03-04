@@ -14,6 +14,7 @@ import { RelancesComponent } from './pages/relances/relances.component';
 import { LoginComponent } from './pages/login/login.component';
 import { DistributionsComponent } from './pages/distributions/distributions.component';
 import { BordereauxComponent } from './pages/bordereaux/bordereaux.component';
+import { EnregistrerCourrierComponent } from './pages/enregistrer-courrier/enregistrer-courrier.component';
 import { authChildGuard, authGuard } from './auth/auth.guard';
 
 export const routes: Routes = [
@@ -59,6 +60,11 @@ export const routes: Routes = [
       {
         path: 'bordereaux',
         component: BordereauxComponent,
+        data: { roles: ['ADMIN', 'RECEPTION'] }
+      },
+      {
+        path: 'enregistrer-courrier',
+        component: EnregistrerCourrierComponent,
         data: { roles: ['ADMIN', 'RECEPTION'] }
       },
       {
