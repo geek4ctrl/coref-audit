@@ -1,5 +1,7 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
+import { AuthService } from '../../auth/auth.service';
 
 @Component({
   selector: 'app-header',
@@ -21,10 +23,10 @@ import { CommonModule } from '@angular/common';
 
         <div class="user-profile-container">
           <div class="user-profile" (click)="toggleDropdown()">
-            <div class="user-avatar">JN</div>
+            <div class="user-avatar">{{ userInitials }}</div>
             <div class="user-info">
-              <div class="user-name">Joseph Papy Nkulani</div>
-              <div class="user-role">Admin</div>
+              <div class="user-name">{{ displayName }}</div>
+              <div class="user-role">{{ displayRole }}</div>
             </div>
             <span class="dropdown-icon" [class.rotated]="isDropdownOpen()">▼</span>
           </div>
@@ -32,10 +34,10 @@ import { CommonModule } from '@angular/common';
           @if (isDropdownOpen()) {
             <div class="dropdown-menu">
               <div class="dropdown-header">
-                <div class="dropdown-user-avatar">JN</div>
+                <div class="dropdown-user-avatar">{{ userInitials }}</div>
                 <div class="dropdown-user-info">
-                  <div class="dropdown-user-name">Joseph Papy Nkulani</div>
-                  <div class="dropdown-user-email">jp.nkulani@finances.gouv.cd</div>
+                  <div class="dropdown-user-name">{{ displayName }}</div>
+                  <div class="dropdown-user-email">{{ displayEmail }}</div>
                 </div>
               </div>
               <div class="dropdown-divider"></div>
@@ -44,7 +46,7 @@ import { CommonModule } from '@angular/common';
                 <span>Mon profil</span>
               </button>
               <div class="dropdown-divider"></div>
-              <button class="dropdown-item danger">
+              <button class="dropdown-item danger" (click)="onLogout()">
                 <span class="dropdown-item-icon">🚪</span>
                 <span>Déconnexion</span>
               </button>
@@ -319,10 +321,40 @@ import { CommonModule } from '@angular/common';
   `]
 })
 export class HeaderComponent {
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
   notificationCount = 1;
   isDropdownOpen = signal(false);
 
+  get displayName() {
+    return this.authService.user()?.name ?? 'Utilisateur';
+  }
+
+  get displayEmail() {
+    return this.authService.user()?.email ?? '';
+  }
+
+  get displayRole() {
+    return this.authService.user()?.role ?? '';
+  }
+
+  get userInitials() {
+    const name = this.authService.user()?.name;
+    if (!name) {
+      return 'U';
+    }
+
+    const parts = name.trim().split(/\s+/).slice(0, 2);
+    return parts.map((part) => part.charAt(0).toUpperCase()).join('');
+  }
+
   toggleDropdown() {
     this.isDropdownOpen.set(!this.isDropdownOpen());
+  }
+
+  onLogout() {
+    this.authService.logout();
+    this.isDropdownOpen.set(false);
+    this.router.navigate(['/login']);
   }
 }
