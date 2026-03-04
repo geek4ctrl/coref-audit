@@ -8,6 +8,7 @@ interface StatCard {
   subtitle: string;
   icon: string;
   accent: 'blue' | 'orange' | 'sky' | 'purple';
+  action?: 'openCreateModal' | 'none';
 }
 
 interface SummaryCard {
@@ -61,7 +62,12 @@ interface ReceptionCreatePayload {
 
       <section class="stats-grid" aria-label="Indicateurs réception">
         @for (card of statCards; track card.subtitle) {
-          <article class="stat-card" [class.active]="$index === 0">
+          <article
+            class="stat-card"
+            [class.active]="$index === 0"
+            [class.clickable]="card.action === 'openCreateModal'"
+            (click)="onStatCardClick(card)"
+          >
             <div [class]="'stat-icon ' + card.accent">{{ card.icon }}</div>
             <div>
               <p class="stat-value">{{ card.value }}</p>
@@ -315,6 +321,15 @@ interface ReceptionCreatePayload {
       align-items: center;
       gap: 14px;
       min-height: 96px;
+    }
+
+    .stat-card.clickable {
+      cursor: pointer;
+    }
+
+    .stat-card.clickable:hover {
+      border-color: #93c5fd;
+      box-shadow: 0 0 0 1px #93c5fd;
     }
 
     .stat-card.active {
@@ -792,10 +807,10 @@ export class ReceptionComponent {
   });
 
   statCards: StatCard[] = [
-    { value: 0, subtitle: 'Entrées du jour', icon: '◈', accent: 'blue' },
-    { value: 1, subtitle: 'À scanner', icon: '⬚', accent: 'orange' },
-    { value: 1, subtitle: 'À distribuer', icon: '➤', accent: 'sky' },
-    { value: 0, subtitle: 'Bordereaux en attente', icon: '⬒', accent: 'purple' }
+    { value: 0, subtitle: 'Entrées du jour', icon: '◈', accent: 'blue', action: 'none' },
+    { value: 1, subtitle: 'À scanner', icon: '⬚', accent: 'orange', action: 'openCreateModal' },
+    { value: 1, subtitle: 'À distribuer', icon: '➤', accent: 'sky', action: 'none' },
+    { value: 0, subtitle: 'Bordereaux en attente', icon: '⬒', accent: 'purple', action: 'none' }
   ];
 
   summaryCards: SummaryCard[] = [
@@ -868,6 +883,12 @@ export class ReceptionComponent {
         this.modalError.set('Échec de l’enregistrement. Vérifiez les champs et réessayez.');
       }
     });
+  }
+
+  onStatCardClick(card: StatCard) {
+    if (card.action === 'openCreateModal') {
+      this.openCreateModal();
+    }
   }
 
   private resetCreateForm() {
