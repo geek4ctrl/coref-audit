@@ -12,6 +12,8 @@ import { DocumentsComponent } from './pages/documents/documents.component';
 import { RetardsComponent } from './pages/retards/retards.component';
 import { RelancesComponent } from './pages/relances/relances.component';
 import { LoginComponent } from './pages/login/login.component';
+import { DistributionsComponent } from './pages/distributions/distributions.component';
+import { BordereauxComponent } from './pages/bordereaux/bordereaux.component';
 import { authChildGuard, authGuard } from './auth/auth.guard';
 
 export const routes: Routes = [
@@ -47,6 +49,16 @@ export const routes: Routes = [
       {
         path: 'reception',
         component: ReceptionComponent,
+        data: { roles: ['ADMIN', 'RECEPTION'] }
+      },
+      {
+        path: 'distributions',
+        component: DistributionsComponent,
+        data: { roles: ['ADMIN', 'RECEPTION'] }
+      },
+      {
+        path: 'bordereaux',
+        component: BordereauxComponent,
         data: { roles: ['ADMIN', 'RECEPTION'] }
       },
       {
