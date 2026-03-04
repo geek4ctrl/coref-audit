@@ -1,473 +1,695 @@
-import { Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
-interface Document {
-  id: string;
-  title: string;
-  date: string;
-  category: string;
-  categoryColor: string;
-  imageUrl?: string;
+interface StatCard {
+  value: number;
+  subtitle: string;
+  icon: string;
+  accent: 'blue' | 'orange' | 'sky' | 'purple';
 }
 
-interface DocumentSection {
+interface SummaryCard {
   title: string;
-  description: string;
-  count: number;
-  color: string;
+  value: number;
+  subtitle: string;
   icon: string;
-  emptyMessage: string;
-  emptyIcon: string;
-  documents: Document[];
+}
+
+interface ReceptionDocument {
+  number: string;
+  title: string;
+  createdAt: string;
+  badge: string;
 }
 
 @Component({
   selector: 'app-reception',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule],
   template: `
-    <div class="page-container">
-      <div class="page-header">
-        <h1 class="page-title">Réception / Envoi / Statut</h1>
-        <p class="page-subtitle">Gérer la circulation de vos documents</p>
-      </div>
+    <div class="page">
+      <header class="header">
+        <div>
+          <h1 class="title">Dashboard Réception</h1>
+          <p class="subtitle">Vue d'ensemble du guichet</p>
+        </div>
 
-      <div class="sections-container">
-        <div
-          *ngFor="let section of sections"
-          class="section-card"
-          [style.background-color]="section.color + '15'"
-        >
-          <div class="section-header">
-            <div class="section-icon" [style.background-color]="section.color">
-              {{ section.icon }}
+        <div class="header-actions">
+          <button type="button" class="btn btn-yellow" (click)="openCreateModal()">✎ Rédiger un document</button>
+          <button type="button" class="btn btn-purple">⬒ Gérer les Bordereaux</button>
+        </div>
+      </header>
+
+      <section class="stats-grid" aria-label="Indicateurs réception">
+        @for (card of statCards; track card.subtitle) {
+          <article class="stat-card" [class.active]="$index === 0">
+            <div [class]="'stat-icon ' + card.accent">{{ card.icon }}</div>
+            <div>
+              <p class="stat-value">{{ card.value }}</p>
+              <p class="stat-label">{{ card.subtitle }}</p>
             </div>
-            <div class="section-info">
-              <h2 class="section-title">{{ section.title }}</h2>
-              <p class="section-description">{{ section.description }}</p>
+          </article>
+        }
+      </section>
+
+      <section class="summary-grid" aria-label="Synthèse réception">
+        @for (item of summaryCards; track item.title) {
+          <article class="summary-card">
+            <p class="summary-title">{{ item.icon }} {{ item.title }}</p>
+            <p class="summary-value">{{ item.value }}</p>
+            <p class="summary-subtitle">{{ item.subtitle }}</p>
+          </article>
+        }
+      </section>
+
+      <section class="quick-register" aria-label="Nouveau courrier">
+        <div>
+          <h2 class="quick-title">Enregistrer un nouveau courrier</h2>
+          <p class="quick-subtitle">Scannez et distribuez un courrier entrant en quelques clics</p>
+        </div>
+        <button type="button" class="quick-btn" (click)="openCreateModal()">Nouveau courrier</button>
+      </section>
+
+      <section class="recent" aria-label="Documents récemment enregistrés">
+        <h2 class="recent-title">Documents récemment enregistrés</h2>
+
+        @for (doc of recentDocuments; track doc.number) {
+          <article class="doc-row">
+            <div class="doc-main">
+              <p class="doc-number">{{ doc.number }}</p>
+              <p class="doc-name">{{ doc.title }}</p>
+              <p class="doc-date">{{ doc.createdAt }}</p>
             </div>
-            <div class="section-badge" [style.background-color]="section.color">
-              {{ section.count }}
+
+            <div class="doc-actions">
+              <span class="badge">{{ doc.badge }}</span>
+              <button type="button" class="link-action">Sans scan</button>
+              <button type="button" class="link-action">À distribuer</button>
             </div>
-          </div>
+          </article>
+        }
+      </section>
 
-          <div class="section-content">
-            <div class="empty-state" *ngIf="section.count === 0">
-              <div class="placeholder-image">
-                <svg viewBox="0 0 600 300" xmlns="http://www.w3.org/2000/svg">
-                  <!-- Background -->
-                  <rect width="600" height="300" fill="#e8e8e8"/>
+      @if (isCreateModalOpen()) {
+        <div class="modal-backdrop" (click)="closeCreateModal()">
+          <section class="modal" role="dialog" aria-modal="true" aria-label="Enregistrer un courrier" (click)="$event.stopPropagation()">
+            <header class="modal-header">
+              <div>
+                <h3 class="modal-title">Enregistrer un courrier</h3>
+                <p class="modal-subtitle">Le document sera disponible dans Distributions pour envoi ultérieur</p>
+              </div>
+              <button type="button" class="modal-close" (click)="closeCreateModal()" aria-label="Fermer">✕</button>
+            </header>
 
-                  <!-- Image icon -->
-                  <g transform="translate(300, 150)">
-                    <!-- Mountain/landscape icon -->
-                    <path d="M-60,20 L-40,-10 L-20,10 L0,-20 L20,0 L40,-15 L60,20 Z" fill="#c0c0c0"/>
-                    <circle cx="-35" cy="-25" r="12" fill="#d0d0d0"/>
-                  </g>
+            <div class="modal-body">
+              <div class="field-group type-group">
+                <p class="field-label">Type de document *</p>
+                <div class="type-options">
+                  <button
+                    type="button"
+                    class="type-option"
+                    [class.selected]="selectedDocumentType() === 'EXTERNE'"
+                    (click)="selectedDocumentType.set('EXTERNE')"
+                  >
+                    <span class="type-title">Document Externe</span>
+                    <span class="type-subtitle">Sera envoyé à l'Assistante du Chef</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="type-option"
+                    [class.selected]="selectedDocumentType() === 'PILIER'"
+                    (click)="selectedDocumentType.set('PILIER')"
+                  >
+                    <span class="type-title">Document Pilier</span>
+                    <span class="type-subtitle">Sera envoyé au Coordinateur (signature requise)</span>
+                  </button>
+                </div>
+              </div>
 
-                  <!-- Text -->
-                  <text x="50%" y="75%" text-anchor="middle" fill="#999" font-size="16" font-family="Arial, sans-serif" font-weight="500">
-                    {{ section.emptyMessage }}
-                  </text>
-                </svg>
+              <div class="field-group">
+                <label class="field-label" for="date-reception">Date de réception *</label>
+                <input id="date-reception" class="field-input" type="date" value="2026-03-04" />
+              </div>
+
+              <div class="field-group">
+                <label class="field-label" for="expediteur">Expéditeur *</label>
+                <input id="expediteur" class="field-input" type="text" placeholder="Nom de l'expéditeur ou organisation" />
+              </div>
+
+              <div class="field-group">
+                <label class="field-label" for="objet">Objet du document *</label>
+                <textarea id="objet" class="field-input field-textarea" rows="3" placeholder="Décrivez brièvement l'objet du document"></textarea>
+              </div>
+
+              <div class="field-row">
+                <div class="field-group">
+                  <label class="field-label" for="categorie">Catégorie *</label>
+                  <select id="categorie" class="field-input">
+                    <option value="">Sélectionner une catégorie</option>
+                  </select>
+                </div>
+                <div class="field-group">
+                  <label class="field-label" for="confidentialite">Niveau de confidentialité *</label>
+                  <select id="confidentialite" class="field-input">
+                    <option>PUBLIC</option>
+                    <option>INTERNE</option>
+                    <option>CONFIDENTIEL</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="field-group">
+                <label class="field-label" for="observations">Observations</label>
+                <textarea id="observations" class="field-input field-textarea" rows="2" placeholder="Notes ou observations complémentaires (optionnel)"></textarea>
+              </div>
+
+              <div class="workflow-note">
+                <span>⚠</span>
+                <p><strong>Workflow automatique :</strong> Une fois créé, le document suivra le parcours prédéfini et sera tracé à chaque étape.</p>
               </div>
             </div>
-            <div class="documents-grid" *ngIf="section.count > 0">
-              <div class="document-card" *ngFor="let doc of section.documents">
-                <div class="document-image">
-                  <svg viewBox="0 0 400 240" xmlns="http://www.w3.org/2000/svg">
-                    <rect width="400" height="240" fill="#e0e0e0"/>
-                    <g transform="translate(200, 120)">
-                      <path d="M-50,20 L-30,-15 L-10,5 L10,-25 L30,-5 L50,15 Z" fill="#c0c0c0"/>
-                      <circle cx="-25" cy="-30" r="15" fill="#d0d0d0"/>
-                    </g>
-                  </svg>
-                </div>
-                <div class="document-content">
-                  <div class="document-meta">
-                    <span class="document-date">{{ doc.date }}</span>
-                    <span class="document-category" [style.color]="doc.categoryColor">{{ doc.category }}</span>
-                  </div>
-                  <h3 class="document-title">{{ doc.title }}</h3>
-                </div>
-              </div>
-            </div>
-          </div>
+          </section>
         </div>
-      </div>
-
-      <div class="stats-summary">
-        <div class="stat-box" style="background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);">
-          <div class="stat-count">{{ sections[0].count }}</div>
-          <div class="stat-label">Reçus</div>
-        </div>
-        <div class="stat-box" style="background: linear-gradient(135deg, #F97316 0%, #EA580C 100%);">
-          <div class="stat-count">{{ sections[1].count }}</div>
-          <div class="stat-label">À traiter</div>
-        </div>
-        <div class="stat-box" style="background: linear-gradient(135deg, #10B981 0%, #059669 100%);">
-          <div class="stat-count">{{ sections[2].count }}</div>
-          <div class="stat-label">Envoyés</div>
-        </div>
-      </div>
+      }
     </div>
   `,
   styles: [`
-    .page-container {
-      padding: 32px;
-      max-width: 1400px;
+    .page {
+      max-width: 1280px;
       margin: 0 auto;
-    }
-
-    .page-header {
-      margin-bottom: 32px;
-    }
-
-    .page-title {
-      font-size: 28px;
-      font-weight: 600;
-      color: #1a1a1a;
-      margin: 0 0 8px 0;
-    }
-
-    .page-subtitle {
-      font-size: 15px;
-      color: #666;
-      margin: 0;
-    }
-
-    .sections-container {
       display: flex;
       flex-direction: column;
-      gap: 24px;
-    }
-
-    .section-card {
-      border-radius: 16px;
-      padding: 24px;
-      background: white;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-
-    .section-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-    }
-
-    .section-header {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding-bottom: 20px;
-      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-    }
-
-    .section-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
-      flex-shrink: 0;
-      color: white;
-    }
-
-    .section-info {
-      flex: 1;
-    }
-
-    .section-title {
-      font-size: 18px;
-      font-weight: 600;
-      color: #1a1a1a;
-      margin: 0 0 4px 0;
-    }
-
-    .section-description {
-      font-size: 14px;
-      color: #666;
-      margin: 0;
-    }
-
-    .section-badge {
-      min-width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      font-weight: 700;
-      color: white;
-      padding: 0 8px;
-    }
-
-    .section-content {
-      padding-top: 24px;
-      min-height: 120px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 32px 24px;
-      width: 100%;
-    }
-
-    .placeholder-image {
-      max-width: 700px;
-      margin: 0 auto;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-      background: #e8e8e8;
-      border: 1px solid #ddd;
-    }
-
-    .placeholder-image svg {
-      width: 100%;
-      height: auto;
-      display: block;
-    }
-
-    .documents-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
       gap: 20px;
-      width: 100%;
-      padding: 4px;
     }
 
-    .document-card {
-      background: white;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-      transition: transform 0.2s, box-shadow 0.2s;
-      cursor: pointer;
-    }
-
-    .document-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
-    }
-
-    .document-image {
-      width: 100%;
-      height: 180px;
-      background: #e0e0e0;
-      overflow: hidden;
-    }
-
-    .document-image svg {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
-
-    .document-content {
-      padding: 16px 20px 20px;
-    }
-
-    .document-meta {
+    .header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-      padding-bottom: 12px;
-      border-bottom: 2px solid #f0f0f0;
+      align-items: flex-start;
+      gap: 14px;
+      flex-wrap: wrap;
     }
 
-    .document-date {
-      font-size: 13px;
-      color: #666;
-    }
-
-    .document-category {
-      font-size: 13px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .document-title {
-      font-size: 16px;
-      font-weight: 600;
-      color: #1a1a1a;
+    .title {
       margin: 0;
-      line-height: 1.4;
+      font-size: 20px;
+      line-height: 1.05;
+      font-weight: 800;
+      color: #0b3470;
     }
 
-    .stats-summary {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-      margin-top: 32px;
+    .subtitle {
+      margin: 6px 0 0;
+      font-size: 12px;
+      color: #475569;
     }
 
-    .stat-box {
-      padding: 24px;
+    .header-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: 0;
       border-radius: 12px;
-      text-align: center;
-      color: white;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-
-    .stat-box:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-    }
-
-    .stat-count {
-      font-size: 42px;
+      padding: 14px 22px;
+      font-size: 14px;
       font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+    }
+
+    .btn-yellow {
+      background: #f0c23a;
+      color: #0f172a;
+    }
+
+    .btn-purple {
+      background: #8b2cf0;
+      color: #ffffff;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .stat-card {
+      background: #ffffff;
+      border: 1px solid #dbe3ef;
+      border-radius: 14px;
+      padding: 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-height: 96px;
+    }
+
+    .stat-card.active {
+      border-color: #0b3a78;
+      box-shadow: inset 0 0 0 1px #0b3a78;
+    }
+
+    .stat-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .stat-icon.blue {
+      background: #0b3a78;
+      color: #ffffff;
+    }
+
+    .stat-icon.orange {
+      background: #fff2df;
+      color: #f97316;
+    }
+
+    .stat-icon.sky {
+      background: #e2edff;
+      color: #2563eb;
+    }
+
+    .stat-icon.purple {
+      background: #f2e8ff;
+      color: #9333ea;
+    }
+
+    .stat-value {
+      margin: 0;
+      font-size: 30px;
       line-height: 1;
-      margin-bottom: 8px;
+      font-weight: 800;
+      color: #0f172a;
     }
 
     .stat-label {
+      margin: 6px 0 0;
       font-size: 14px;
-      font-weight: 500;
-      opacity: 0.95;
-      text-transform: capitalize;
+      color: #334155;
     }
 
-    @media (max-width: 768px) {
-      .page-container {
-        padding: 16px;
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .summary-card {
+      background: #ffffff;
+      border: 1px solid #dbe3ef;
+      border-radius: 14px;
+      padding: 18px 20px;
+      min-height: 112px;
+    }
+
+    .summary-title {
+      margin: 0;
+      color: #0f172a;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .summary-value {
+      margin: 14px 0 0;
+      color: #0b3a78;
+      font-size: 32px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .summary-subtitle {
+      margin: 8px 0 0;
+      color: #475569;
+      font-size: 14px;
+    }
+
+    .quick-register {
+      background: #063a78;
+      border-radius: 14px;
+      padding: 24px 28px;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .quick-title {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.1;
+      font-weight: 800;
+    }
+
+    .quick-subtitle {
+      margin: 10px 0 0;
+      font-size: 14px;
+      color: #dbeafe;
+    }
+
+    .quick-btn {
+      border: 0;
+      border-radius: 12px;
+      background: #f0c23a;
+      color: #0f172a;
+      font-size: 16px;
+      font-weight: 700;
+      padding: 14px 24px;
+      cursor: pointer;
+      min-width: 180px;
+    }
+
+    .recent {
+      background: #ffffff;
+      border: 1px solid #dbe3ef;
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    .recent-title {
+      margin: 0;
+      padding: 20px;
+      border-bottom: 1px solid #e5e7eb;
+      color: #0b3a78;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .doc-row {
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-top: 1px solid #f1f5f9;
+    }
+
+    .doc-number {
+      margin: 0;
+      font-size: 16px;
+      color: #0b3a78;
+      font-weight: 700;
+    }
+
+    .doc-name {
+      margin: 4px 0 0;
+      font-size: 14px;
+      color: #0f172a;
+      font-weight: 600;
+    }
+
+    .doc-date {
+      margin: 6px 0 0;
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    .doc-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .badge {
+      background: #e2e8f0;
+      color: #334155;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .link-action {
+      border: 0;
+      border-radius: 8px;
+      padding: 7px 10px;
+      background: #f1f5f9;
+      color: #334155;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 1200;
+    }
+
+    .modal {
+      width: min(900px, 100%);
+      max-height: 90vh;
+      overflow: auto;
+      background: #ffffff;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 24px 48px rgba(2, 6, 23, 0.28);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 18px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .modal-title {
+      margin: 0;
+      font-size: 20px;
+      color: #0b3a78;
+      font-weight: 700;
+    }
+
+    .modal-subtitle {
+      margin: 4px 0 0;
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .modal-close {
+      border: 0;
+      background: transparent;
+      color: #64748b;
+      font-size: 20px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .modal-body {
+      padding: 16px 18px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field-label {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: #334155;
+    }
+
+    .field-input {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      color: #0f172a;
+      background: #ffffff;
+    }
+
+    .field-textarea {
+      resize: vertical;
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .type-group {
+      border: 1px solid #bfdbfe;
+      background: #f8fbff;
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .type-options {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .type-option {
+      text-align: left;
+      border: 1px solid #dbe3ef;
+      border-radius: 10px;
+      background: #ffffff;
+      padding: 10px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .type-option.selected {
+      border-color: #2563eb;
+      box-shadow: inset 0 0 0 1px #2563eb;
+      background: #f8fbff;
+    }
+
+    .type-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .type-subtitle {
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    .workflow-note {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      border: 1px solid #facc15;
+      background: #fffbeb;
+      color: #854d0e;
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 13px;
+    }
+
+    .workflow-note p {
+      margin: 0;
+    }
+
+    @media (max-width: 1200px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
-      .section-header {
-        flex-wrap: wrap;
+      .title {
+        font-size: 22px;
       }
 
-      .section-badge {
-        min-width: 36px;
-        height: 36px;
+      .subtitle,
+      .stat-label,
+      .summary-subtitle,
+      .doc-name {
+        font-size: 15px;
+      }
+
+      .quick-title {
+        font-size: 24px;
+      }
+
+      .quick-subtitle {
         font-size: 16px;
       }
 
-      .stats-summary {
+      .quick-btn {
+        font-size: 16px;
+        min-width: 160px;
+      }
+
+      .recent-title {
+        font-size: 20px;
+      }
+
+      .doc-number {
+        font-size: 16px;
+      }
+
+      .doc-date {
+        font-size: 15px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .stats-grid,
+      .summary-grid {
         grid-template-columns: 1fr;
-        gap: 12px;
       }
 
-      .stat-box {
-        padding: 20px;
+      .btn {
+        width: 100%;
       }
 
-      .stat-count {
-        font-size: 36px;
+      .doc-row {
+        align-items: flex-start;
+        flex-direction: column;
       }
 
-      .documents-grid {
+      .doc-actions {
+        justify-content: flex-start;
+      }
+
+      .field-row,
+      .type-options {
         grid-template-columns: 1fr;
       }
     }
   `]
 })
 export class ReceptionComponent {
-  sections: DocumentSection[] = [
+  isCreateModalOpen = signal(false);
+  selectedDocumentType = signal<'EXTERNE' | 'PILIER'>('EXTERNE');
+
+  statCards: StatCard[] = [
+    { value: 0, subtitle: 'Entrées du jour', icon: '◈', accent: 'blue' },
+    { value: 1, subtitle: 'À scanner', icon: '⬚', accent: 'orange' },
+    { value: 1, subtitle: 'À distribuer', icon: '➤', accent: 'sky' },
+    { value: 0, subtitle: 'Bordereaux en attente', icon: '⬒', accent: 'purple' }
+  ];
+
+  summaryCards: SummaryCard[] = [
+    { title: 'Ce mois', value: 0, subtitle: 'Documents distribués', icon: '◷' },
+    { title: 'Total', value: 1, subtitle: 'Documents enregistrés', icon: '↗' }
+  ];
+
+  recentDocuments: ReceptionDocument[] = [
     {
-      title: 'Documents reçus',
-      description: 'Nouveaux documents assignés à vous',
-      count: 3,
-      color: '#3B82F6',
-      icon: '📥',
-      emptyMessage: 'Aucun nouveau document',
-      emptyIcon: '📭',
-      documents: [
-        {
-          id: '1',
-          title: 'Rapport Financier Annuel 2025',
-          date: '28 Jan 2026',
-          category: 'Rapport Financier',
-          categoryColor: '#3B82F6'
-        },
-        {
-          id: '2',
-          title: 'Procès-verbal de la Réunion du Conseil',
-          date: '25 Jan 2026',
-          category: 'Compte Rendu',
-          categoryColor: '#8B5CF6'
-        },
-        {
-          id: '3',
-          title: 'Note de Service: Nouvelles Procédures',
-          date: '22 Jan 2026',
-          category: 'Note de Service',
-          categoryColor: '#06B6D4'
-        }
-      ]
-    },
-    {
-      title: 'À traiter',
-      description: 'Documents nécessitant votre action',
-      count: 2,
-      color: '#F97316',
-      icon: '⚡',
-      emptyMessage: 'Tous les documents ont été traités',
-      emptyIcon: '✓',
-      documents: [
-        {
-          id: '4',
-          title: 'Demande d\'Approbation Budgétaire',
-          date: '20 Jan 2026',
-          category: 'Demande',
-          categoryColor: '#F97316'
-        },
-        {
-          id: '5',
-          title: 'Contrat de Partenariat à Réviser',
-          date: '18 Jan 2026',
-          category: 'Contrat',
-          categoryColor: '#EF4444'
-        }
-      ]
-    },
-    {
-      title: 'Documents envoyés',
-      description: 'Documents que vous avez transmis',
-      count: 4,
-      color: '#10B981',
-      icon: '✈️',
-      emptyMessage: 'Aucun document envoyé',
-      emptyIcon: '📤',
-      documents: [
-        {
-          id: '6',
-          title: 'Évaluation de Performance Q4 2025',
-          date: '30 Jan 2026',
-          category: 'Rapport',
-          categoryColor: '#10B981'
-        },
-        {
-          id: '7',
-          title: 'Recommandations Stratégiques',
-          date: '28 Jan 2026',
-          category: 'Stratégie',
-          categoryColor: '#14B8A6'
-        },
-        {
-          id: '8',
-          title: 'Directive Administrative',
-          date: '26 Jan 2026',
-          category: 'Directive',
-          categoryColor: '#059669'
-        },
-        {
-          id: '9',
-          title: 'Plan d\'Action Trimestriel',
-          date: '24 Jan 2026',
-          category: 'Planification',
-          categoryColor: '#0D9488'
-        }
-      ]
+      number: 'COREF-2026-0002',
+      title: 'Document créé',
+      createdAt: '19 févr. 2026 à 15:37',
+      badge: 'Document créé'
     }
   ];
+
+  openCreateModal() {
+    this.isCreateModalOpen.set(true);
+  }
+
+  closeCreateModal() {
+    this.isCreateModalOpen.set(false);
+  }
 }
