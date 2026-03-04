@@ -1,5 +1,7 @@
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { AuthService, API_BASE_URL } from '../../auth/auth.service';
 
 interface StatCard {
   value: number;
@@ -20,6 +22,23 @@ interface ReceptionDocument {
   title: string;
   createdAt: string;
   badge: string;
+}
+
+interface ReceptionDocumentApi {
+  number: string;
+  subject: string;
+  status: string;
+  createdAt: string;
+}
+
+interface ReceptionCreatePayload {
+  documentType: 'EXTERNE' | 'PILIER';
+  receivedDate: string;
+  sender: string;
+  subject: string;
+  category: string;
+  confidentiality: 'PUBLIC' | 'INTERNE' | 'CONFIDENTIEL';
+  observations: string;
 }
 
 @Component({
@@ -73,7 +92,7 @@ interface ReceptionDocument {
       <section class="recent" aria-label="Documents récemment enregistrés">
         <h2 class="recent-title">Documents récemment enregistrés</h2>
 
-        @for (doc of recentDocuments; track doc.number) {
+        @for (doc of recentDocuments(); track doc.number) {
           <article class="doc-row">
             <div class="doc-main">
               <p class="doc-number">{{ doc.number }}</p>
@@ -128,44 +147,95 @@ interface ReceptionDocument {
 
               <div class="field-group">
                 <label class="field-label" for="date-reception">Date de réception *</label>
-                <input id="date-reception" class="field-input" type="date" value="2026-03-04" />
+                <input
+                  id="date-reception"
+                  class="field-input"
+                  type="date"
+                  [value]="createForm().receivedDate"
+                  (input)="updateFormField('receivedDate', $any($event.target).value)"
+                />
               </div>
 
               <div class="field-group">
                 <label class="field-label" for="expediteur">Expéditeur *</label>
-                <input id="expediteur" class="field-input" type="text" placeholder="Nom de l'expéditeur ou organisation" />
+                <input
+                  id="expediteur"
+                  class="field-input"
+                  type="text"
+                  placeholder="Nom de l'expéditeur ou organisation"
+                  [value]="createForm().sender"
+                  (input)="updateFormField('sender', $any($event.target).value)"
+                />
               </div>
 
               <div class="field-group">
                 <label class="field-label" for="objet">Objet du document *</label>
-                <textarea id="objet" class="field-input field-textarea" rows="3" placeholder="Décrivez brièvement l'objet du document"></textarea>
+                <textarea
+                  id="objet"
+                  class="field-input field-textarea"
+                  rows="3"
+                  placeholder="Décrivez brièvement l'objet du document"
+                  [value]="createForm().subject"
+                  (input)="updateFormField('subject', $any($event.target).value)"
+                ></textarea>
               </div>
 
               <div class="field-row">
                 <div class="field-group">
                   <label class="field-label" for="categorie">Catégorie *</label>
-                  <select id="categorie" class="field-input">
+                  <select
+                    id="categorie"
+                    class="field-input"
+                    [value]="createForm().category"
+                    (change)="updateFormField('category', $any($event.target).value)"
+                  >
                     <option value="">Sélectionner une catégorie</option>
+                    @for (category of categories; track category) {
+                      <option [value]="category">{{ category }}</option>
+                    }
                   </select>
                 </div>
                 <div class="field-group">
                   <label class="field-label" for="confidentialite">Niveau de confidentialité *</label>
-                  <select id="confidentialite" class="field-input">
-                    <option>PUBLIC</option>
-                    <option>INTERNE</option>
-                    <option>CONFIDENTIEL</option>
+                  <select
+                    id="confidentialite"
+                    class="field-input"
+                    [value]="createForm().confidentiality"
+                    (change)="updateFormField('confidentiality', $any($event.target).value)"
+                  >
+                    <option value="PUBLIC">PUBLIC</option>
+                    <option value="INTERNE">INTERNE</option>
+                    <option value="CONFIDENTIEL">CONFIDENTIEL</option>
                   </select>
                 </div>
               </div>
 
               <div class="field-group">
                 <label class="field-label" for="observations">Observations</label>
-                <textarea id="observations" class="field-input field-textarea" rows="2" placeholder="Notes ou observations complémentaires (optionnel)"></textarea>
+                <textarea
+                  id="observations"
+                  class="field-input field-textarea"
+                  rows="2"
+                  placeholder="Notes ou observations complémentaires (optionnel)"
+                  [value]="createForm().observations"
+                  (input)="updateFormField('observations', $any($event.target).value)"
+                ></textarea>
               </div>
+
+              @if (modalError()) {
+                <p class="modal-error">{{ modalError() }}</p>
+              }
 
               <div class="workflow-note">
                 <span>⚠</span>
                 <p><strong>Workflow automatique :</strong> Une fois créé, le document suivra le parcours prédéfini et sera tracé à chaque étape.</p>
+              </div>
+
+              <div class="modal-actions">
+                <button type="button" class="btn-secondary" (click)="closeCreateModal()" [disabled]="isSaving()">Annuler</button>
+                <button type="button" class="btn-primary" (click)="submitCreateDocument()" [disabled]="isSaving()">
+                  {{ isSaving() ? 'Enregistrement...' : 'Enregistrer' }}
+                </button>
               </div>
             </div>
           </section>
@@ -592,6 +662,48 @@ interface ReceptionDocument {
       margin: 0;
     }
 
+    .modal-error {
+      margin: 0;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #fecaca;
+      background: #fef2f2;
+      color: #b91c1c;
+      font-size: 13px;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .btn-secondary,
+    .btn-primary {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #1e293b;
+    }
+
+    .btn-primary {
+      background: #0b3a78;
+      color: #ffffff;
+    }
+
+    .btn-secondary:disabled,
+    .btn-primary:disabled {
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+
     @media (max-width: 1200px) {
       .stats-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -661,8 +773,23 @@ interface ReceptionDocument {
   `]
 })
 export class ReceptionComponent {
+  private readonly http = inject(HttpClient);
+  private readonly authService = inject(AuthService);
+
   isCreateModalOpen = signal(false);
   selectedDocumentType = signal<'EXTERNE' | 'PILIER'>('EXTERNE');
+  isSaving = signal(false);
+  modalError = signal('');
+
+  createForm = signal<ReceptionCreatePayload>({
+    documentType: 'EXTERNE',
+    receivedDate: new Date().toISOString().slice(0, 10),
+    sender: '',
+    subject: '',
+    category: '',
+    confidentiality: 'PUBLIC',
+    observations: ''
+  });
 
   statCards: StatCard[] = [
     { value: 0, subtitle: 'Entrées du jour', icon: '◈', accent: 'blue' },
@@ -676,20 +803,122 @@ export class ReceptionComponent {
     { title: 'Total', value: 1, subtitle: 'Documents enregistrés', icon: '↗' }
   ];
 
-  recentDocuments: ReceptionDocument[] = [
-    {
-      number: 'COREF-2026-0002',
-      title: 'Document créé',
-      createdAt: '19 févr. 2026 à 15:37',
-      badge: 'Document créé'
-    }
+  categories: string[] = [
+    "Courrier d'arrivée",
+    'Courrier de départ',
+    'Note de service',
+    'Demande',
+    'Rapport',
+    'Contrat',
+    'Facture',
+    'Demande de congé',
+    'Ordre de mission',
+    'PV de réunion',
+    'Décision',
+    'Circulaire',
+    'Mémorandum',
+    'Convention',
+    'Autre'
   ];
 
+  recentDocuments = signal<ReceptionDocument[]>([]);
+
+  ngOnInit() {
+    this.loadRecentDocuments();
+  }
+
   openCreateModal() {
+    this.modalError.set('');
     this.isCreateModalOpen.set(true);
   }
 
   closeCreateModal() {
+    this.modalError.set('');
     this.isCreateModalOpen.set(false);
+  }
+
+  updateFormField<K extends keyof ReceptionCreatePayload>(key: K, value: ReceptionCreatePayload[K]) {
+    this.createForm.update((current) => ({ ...current, [key]: value }));
+  }
+
+  submitCreateDocument() {
+    const form = this.createForm();
+    const payload: ReceptionCreatePayload = {
+      ...form,
+      documentType: this.selectedDocumentType()
+    };
+
+    if (!payload.receivedDate || !payload.sender || !payload.subject || !payload.category || !payload.confidentiality) {
+      this.modalError.set('Veuillez remplir tous les champs obligatoires.');
+      return;
+    }
+
+    this.isSaving.set(true);
+    this.modalError.set('');
+
+    this.http.post<{ document: ReceptionDocumentApi }>(`${API_BASE_URL}/reception/documents`, payload).subscribe({
+      next: () => {
+        this.isSaving.set(false);
+        this.closeCreateModal();
+        this.resetCreateForm();
+        this.loadRecentDocuments();
+      },
+      error: () => {
+        this.isSaving.set(false);
+        this.modalError.set('Échec de l’enregistrement. Vérifiez les champs et réessayez.');
+      }
+    });
+  }
+
+  private resetCreateForm() {
+    this.selectedDocumentType.set('EXTERNE');
+    this.createForm.set({
+      documentType: 'EXTERNE',
+      receivedDate: new Date().toISOString().slice(0, 10),
+      sender: '',
+      subject: '',
+      category: '',
+      confidentiality: 'PUBLIC',
+      observations: ''
+    });
+  }
+
+  private loadRecentDocuments() {
+    if (!this.authService.isAuthenticated()) {
+      return;
+    }
+
+    this.http
+      .get<{ documents: ReceptionDocumentApi[] }>(`${API_BASE_URL}/reception/documents/recent?limit=5`)
+      .subscribe({
+        next: (response) => {
+          this.recentDocuments.set(
+            response.documents.map((document) => ({
+              number: document.number,
+              title: document.subject,
+              createdAt: this.formatDateTime(document.createdAt),
+              badge: this.normalizeStatusLabel(document.status)
+            }))
+          );
+        },
+        error: () => {
+          this.recentDocuments.set([]);
+        }
+      });
+  }
+
+  private formatDateTime(value: string) {
+    const date = new Date(value);
+    return new Intl.DateTimeFormat('fr-FR', {
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    }).format(date);
+  }
+
+  private normalizeStatusLabel(status: string) {
+    if (status === 'Document crÃ©Ã©' || status === 'Document cree') {
+      return 'Document créé';
+    }
+    return status;
   }
 }
