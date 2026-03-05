@@ -1,5 +1,25 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { API_BASE_URL } from '../../auth/auth.service';
+
+interface DistributionDocument {
+  id: number;
+  number: string;
+  subject: string;
+  status: string;
+  createdAt: string;
+  deliveredAt: string | null;
+  hasBordereau: boolean;
+  bordereauNumber: string | null;
+}
+
+interface DistributionOverviewResponse {
+  toDistributeCount: number;
+  distributedTodayCount: number;
+  toDistribute: DistributionDocument[];
+  distributedToday: DistributionDocument[];
+}
 
 @Component({
   selector: 'app-distributions',
@@ -14,28 +34,74 @@ import { CommonModule } from '@angular/common';
 
       <section class="kpis">
         <article class="kpi-card">
-          <p class="kpi-value">1</p>
+          <p class="kpi-value">{{ toDistributeCount() }}</p>
           <p class="kpi-label">À distribuer</p>
         </article>
         <article class="kpi-card">
-          <p class="kpi-value">0</p>
+          <p class="kpi-value">{{ distributedTodayCount() }}</p>
           <p class="kpi-label">Distribués aujourd'hui</p>
         </article>
       </section>
 
       <section class="panel">
         <div class="tabs">
-          <span class="tab active">À distribuer</span>
-          <span class="tab">Distribués aujourd'hui</span>
+          <button type="button" class="tab" [class.active]="activeTab() === 'todo'" (click)="activeTab.set('todo')">
+            À distribuer
+          </button>
+          <button type="button" class="tab" [class.active]="activeTab() === 'done'" (click)="activeTab.set('done')">
+            Distribués aujourd'hui
+          </button>
         </div>
 
-        <article class="row">
-          <div>
-            <p class="doc-number">COREF-2026-0002</p>
-            <p class="doc-title">Document créé</p>
-          </div>
-          <button type="button" class="send-btn">Envoyer</button>
-        </article>
+        @if (errorMessage()) {
+          <p class="error">{{ errorMessage() }}</p>
+        }
+
+        @if (isLoading()) {
+          <p class="empty-text">Chargement...</p>
+        } @else {
+          @if (activeTab() === 'todo') {
+            @if (toDistribute().length === 0) {
+              <p class="empty-text">Aucun courrier à distribuer.</p>
+            } @else {
+              @for (doc of toDistribute(); track doc.id) {
+                <article class="row">
+                  <div>
+                    <p class="doc-number">{{ doc.number }}</p>
+                    <p class="doc-title">{{ doc.subject }}</p>
+                    <p class="doc-meta">Statut: {{ doc.status }}</p>
+                  </div>
+                  <div class="actions">
+                    <button type="button" class="secondary-btn" (click)="markDelivered(doc.id)">Marquer remis</button>
+                    <button
+                      type="button"
+                      class="send-btn"
+                      [disabled]="doc.hasBordereau"
+                      (click)="generateBordereau(doc.id)"
+                    >
+                      {{ doc.hasBordereau ? 'Bordereau généré' : 'Générer bordereau' }}
+                    </button>
+                  </div>
+                </article>
+              }
+            }
+          } @else {
+            @if (distributedToday().length === 0) {
+              <p class="empty-text">Aucun courrier remis aujourd'hui.</p>
+            } @else {
+              @for (doc of distributedToday(); track doc.id) {
+                <article class="row">
+                  <div>
+                    <p class="doc-number">{{ doc.number }}</p>
+                    <p class="doc-title">{{ doc.subject }}</p>
+                    <p class="doc-meta">Remis à {{ formatDateTime(doc.deliveredAt || doc.createdAt) }}</p>
+                  </div>
+                  <p class="status-done">Remis</p>
+                </article>
+              }
+            }
+          }
+        }
       </section>
     </div>
   `,
@@ -103,6 +169,9 @@ import { CommonModule } from '@angular/common';
     }
 
     .tab {
+      border: 0;
+      background: transparent;
+      cursor: pointer;
       color: #475569;
       font-size: 20px;
       padding: 0 0 10px;
@@ -135,6 +204,29 @@ import { CommonModule } from '@angular/common';
       font-size: 16px;
     }
 
+    .doc-meta {
+      margin: 4px 0 0;
+      color: #475569;
+      font-size: 14px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .secondary-btn {
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #fff;
+      color: #0f172a;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 9px 14px;
+      cursor: pointer;
+    }
+
     .send-btn {
       border: 0;
       border-radius: 8px;
@@ -145,6 +237,88 @@ import { CommonModule } from '@angular/common';
       padding: 9px 14px;
       cursor: pointer;
     }
+
+    .send-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .status-done {
+      margin: 0;
+      color: #047857;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .empty-text,
+    .error {
+      margin: 0;
+      padding: 16px;
+      font-size: 15px;
+      color: #64748b;
+    }
+
+    .error {
+      color: #b91c1c;
+    }
   `]
 })
-export class DistributionsComponent {}
+export class DistributionsComponent implements OnInit {
+  private readonly http = inject(HttpClient);
+
+  activeTab = signal<'todo' | 'done'>('todo');
+  isLoading = signal(false);
+  errorMessage = signal('');
+
+  toDistributeCount = signal(0);
+  distributedTodayCount = signal(0);
+  toDistribute = signal<DistributionDocument[]>([]);
+  distributedToday = signal<DistributionDocument[]>([]);
+
+  ngOnInit(): void {
+    this.loadOverview();
+  }
+
+  markDelivered(documentId: number) {
+    this.errorMessage.set('');
+    this.http.post(`${API_BASE_URL}/reception/distributions/${documentId}/mark-delivered`, {}).subscribe({
+      next: () => this.loadOverview(),
+      error: () => this.errorMessage.set('Impossible de marquer ce courrier comme remis.')
+    });
+  }
+
+  generateBordereau(documentId: number) {
+    this.errorMessage.set('');
+    this.http.post(`${API_BASE_URL}/reception/distributions/${documentId}/generate-bordereau`, {}).subscribe({
+      next: () => this.loadOverview(),
+      error: () => this.errorMessage.set('Impossible de générer le bordereau.')
+    });
+  }
+
+  formatDateTime(value: string) {
+    const date = new Date(value);
+    return new Intl.DateTimeFormat('fr-FR', {
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    }).format(date);
+  }
+
+  private loadOverview() {
+    this.isLoading.set(true);
+    this.errorMessage.set('');
+
+    this.http.get<DistributionOverviewResponse>(`${API_BASE_URL}/reception/distributions/overview`).subscribe({
+      next: (response) => {
+        this.toDistributeCount.set(response.toDistributeCount);
+        this.distributedTodayCount.set(response.distributedTodayCount);
+        this.toDistribute.set(response.toDistribute);
+        this.distributedToday.set(response.distributedToday);
+        this.isLoading.set(false);
+      },
+      error: () => {
+        this.isLoading.set(false);
+        this.errorMessage.set('Impossible de charger les distributions.');
+      }
+    });
+  }
+}
