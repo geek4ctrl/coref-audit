@@ -1,4 +1,6 @@
-import { Component, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { API_BASE_URL } from '../../auth/auth.service';
 
 interface SearchResult {
   number: string;
@@ -10,6 +12,20 @@ interface SearchResult {
   owner: string;
   date: string;
   tag: string;
+}
+
+interface SearchApiResult {
+  number: string;
+  subject: string;
+  status: string;
+  sender: string;
+  category: string;
+  createdAt: string;
+  deliveredAt: string | null;
+}
+
+interface SearchApiResponse {
+  results: SearchApiResult[];
 }
 
 @Component({
@@ -44,7 +60,11 @@ interface SearchResult {
           <h3 class="results-title">{{ searchQuery() ? 'Résultats de recherche' : 'Commencez votre recherche...' }}</h3>
         </div>
         <div class="results-list">
-          @if (results().length === 0 && !searchQuery()) {
+          @if (isLoading()) {
+            <div class="results-empty">
+              <p>Recherche en cours...</p>
+            </div>
+          } @else if (results().length === 0 && !searchQuery()) {
             <div class="results-empty">
               <p>Aucun document sélectionné. Commencez par entrer une recherche.</p>
             </div>
@@ -302,73 +322,81 @@ interface SearchResult {
   `]
 })
 export class RechercheComponent {
-  private allResults: SearchResult[] = [
-    {
-      number: 'COREF-2026-0015',
-      title: "Courrier d'arrivée - Demande d'audience Ministre",
-      status: 'Document envoyé',
-      statusTone: 'info',
-      delay: 'En retard',
-      delayTone: 'danger',
-      owner: 'Direction des Ressources Humaines',
-      date: '02/02/2026',
-      tag: "Courrier d'arrivée"
-    },
-    {
-      number: 'COREF-2026-0019',
-      title: 'Rapport statistiques - Exécution budgétaire janvier',
-      status: 'Document reçu',
-      statusTone: 'success',
-      delay: 'En retard',
-      delayTone: 'danger',
-      owner: 'Marie Kabongo',
-      date: '02/02/2026',
-      tag: 'Rapport'
-    },
-    {
-      number: 'COREF-2026-0013',
-      title: 'Décision - Attribution marché public véhicules',
-      status: 'Document reçu',
-      statusTone: 'success',
-      delay: 'En retard',
-      delayTone: 'danger',
-      owner: 'Jean Mukendi',
-      date: '02/02/2026',
-      tag: 'Décision'
-    },
-    {
-      number: 'COREF-2026-0017',
-      title: "Rapport d'audit interne - Janvier 2026",
-      status: 'Document envoyé',
-      statusTone: 'info',
-      delay: 'En retard',
-      delayTone: 'danger',
-      owner: 'Marie Kabongo',
-      date: '01/02/2026',
-      tag: 'Rapport'
-    }
-  ];
+  private readonly http = inject(HttpClient);
+  private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   searchQuery = signal<string>('');
   results = signal<SearchResult[]>([]);
+  isLoading = signal(false);
 
   onSearchInput(event: Event): void {
-    const searchTerm = (event.target as HTMLInputElement).value.toLowerCase();
+    const searchTerm = (event.target as HTMLInputElement).value;
     this.searchQuery.set(searchTerm);
 
     if (!searchTerm.trim()) {
+      if (this.searchDebounceTimer) {
+        clearTimeout(this.searchDebounceTimer);
+        this.searchDebounceTimer = null;
+      }
+
+      this.isLoading.set(false);
       this.results.set([]);
       return;
     }
 
-    const filtered = this.allResults.filter(item =>
-      item.number.toLowerCase().includes(searchTerm) ||
-      item.title.toLowerCase().includes(searchTerm) ||
-      item.owner.toLowerCase().includes(searchTerm) ||
-      item.tag.toLowerCase().includes(searchTerm)
-    );
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+    }
 
-    this.results.set(filtered);
+    this.searchDebounceTimer = setTimeout(() => {
+      this.runSearch(searchTerm.trim());
+    }, 250);
+  }
+
+  private runSearch(query: string) {
+    this.isLoading.set(true);
+
+    this.http.get<SearchApiResponse>(`${API_BASE_URL}/reception/search`, { params: { q: query } }).subscribe({
+      next: (response) => {
+        this.results.set(response.results.map((item) => this.mapApiResult(item)));
+        this.isLoading.set(false);
+      },
+      error: () => {
+        this.results.set([]);
+        this.isLoading.set(false);
+      }
+    });
+  }
+
+  private mapApiResult(item: SearchApiResult): SearchResult {
+    const normalizedStatus = this.normalizeStatus(item.status);
+    const isDelivered = normalizedStatus === 'Remis';
+
+    return {
+      number: item.number,
+      title: item.subject,
+      status: normalizedStatus,
+      statusTone: isDelivered ? 'success' : 'info',
+      delay: isDelivered ? 'À jour' : 'En attente',
+      delayTone: isDelivered ? 'muted' : 'warning',
+      owner: item.sender,
+      date: this.formatDate(item.createdAt),
+      tag: item.category
+    };
+  }
+
+  private normalizeStatus(status: string) {
+    if (status === 'Document crÃ©Ã©' || status === 'Document cree') {
+      return 'Document créé';
+    }
+
+    return status;
+  }
+
+  private formatDate(value: string) {
+    return new Intl.DateTimeFormat('fr-FR', {
+      dateStyle: 'short'
+    }).format(new Date(value));
   }
 }
 
