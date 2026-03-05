@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
@@ -31,6 +31,11 @@ interface ReceptionDocumentApi {
   subject: string;
   status: string;
   createdAt: string;
+}
+
+interface ReceptionRecentResponse {
+  totalCount: number;
+  documents: ReceptionDocumentApi[];
 }
 
 interface ReceptionCreatePayload {
@@ -79,7 +84,7 @@ interface ReceptionCreatePayload {
       </section>
 
       <section class="summary-grid" aria-label="Synthèse réception">
-        @for (item of summaryCards; track item.title) {
+        @for (item of summaryCards(); track item.title) {
           <article class="summary-card">
             <p class="summary-title">{{ item.icon }} {{ item.title }}</p>
             <p class="summary-value">{{ item.value }}</p>
@@ -815,11 +820,6 @@ export class ReceptionComponent {
     { value: 0, subtitle: 'Bordereaux en attente', icon: '⬒', accent: 'purple', action: 'goToBordereaux' }
   ];
 
-  summaryCards: SummaryCard[] = [
-    { title: 'Ce mois', value: 0, subtitle: 'Documents distribués', icon: '◷' },
-    { title: 'Total', value: 1, subtitle: 'Documents enregistrés', icon: '↗' }
-  ];
-
   categories: string[] = [
     "Courrier d'arrivée",
     'Courrier de départ',
@@ -839,6 +839,12 @@ export class ReceptionComponent {
   ];
 
   recentDocuments = signal<ReceptionDocument[]>([]);
+  totalDocuments = signal(0);
+
+  readonly summaryCards = computed<SummaryCard[]>(() => [
+    { title: 'Ce mois', value: 0, subtitle: 'Documents distribués', icon: '◷' },
+    { title: 'Total', value: this.totalDocuments(), subtitle: 'Documents enregistrés', icon: '↗' }
+  ]);
 
   ngOnInit() {
     this.loadRecentDocuments();
@@ -922,9 +928,10 @@ export class ReceptionComponent {
     }
 
     this.http
-      .get<{ documents: ReceptionDocumentApi[] }>(`${API_BASE_URL}/reception/documents/recent?limit=5`)
+      .get<ReceptionRecentResponse>(`${API_BASE_URL}/reception/documents/recent?limit=5`)
       .subscribe({
         next: (response) => {
+          this.totalDocuments.set(response.totalCount ?? response.documents.length);
           this.recentDocuments.set(
             response.documents.map((document) => ({
               number: document.number,
@@ -935,6 +942,7 @@ export class ReceptionComponent {
           );
         },
         error: () => {
+          this.totalDocuments.set(0);
           this.recentDocuments.set([]);
         }
       });
