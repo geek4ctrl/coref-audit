@@ -68,7 +68,12 @@ interface BordereauxResponse {
                   <p class="doc-subject">{{ item.document.number }} · {{ item.document.subject }}</p>
                   <p class="doc-date">Généré le {{ formatDateTime(item.generatedAt) }}</p>
                 </div>
-                <span class="status" [class.status-signed]="item.status === 'Signé'">{{ item.status }}</span>
+                <div class="row-actions">
+                  <span class="status" [class.status-signed]="item.status === 'Signé'">{{ item.status }}</span>
+                  @if (item.status !== 'Signé') {
+                    <button type="button" class="sign-btn" (click)="markSigned(item.id)">Marquer signé</button>
+                  }
+                </div>
               </article>
             }
           }
@@ -191,6 +196,23 @@ interface BordereauxResponse {
       color: #166534;
     }
 
+    .row-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sign-btn {
+      border: 0;
+      border-radius: 8px;
+      background: #0b3a78;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 8px 11px;
+      cursor: pointer;
+    }
+
     .error {
       margin: 0;
       padding: 14px 16px 0;
@@ -219,6 +241,15 @@ export class BordereauxComponent implements OnInit {
       dateStyle: 'medium',
       timeStyle: 'short'
     }).format(date);
+  }
+
+  markSigned(bordereauId: number) {
+    this.errorMessage.set('');
+
+    this.http.post(`${API_BASE_URL}/reception/bordereaux/${bordereauId}/mark-signed`, {}).subscribe({
+      next: () => this.loadBordereaux(),
+      error: () => this.errorMessage.set('Impossible de mettre à jour le bordereau.')
+    });
   }
 
   private loadBordereaux() {

@@ -1,7 +1,15 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { API_BASE_URL } from '../../auth/auth.service';
+
+interface CreateReceptionDocumentResponse {
+  document: {
+    id: number;
+  };
+}
 
 @Component({
   selector: 'app-enregistrer-courrier',
@@ -198,13 +206,17 @@ import { Router } from '@angular/router';
       </section>
 
       <div class="actions">
+        @if (submitError) {
+          <p class="submit-error">{{ submitError }}</p>
+        }
         <button type="button" class="btn-cancel" (click)="onPrevious()">{{ currentStep === 1 ? 'Annuler' : 'Précédent' }}</button>
         <button
           type="button"
           [class]="currentStep === 3 ? 'btn-finish' : 'btn-next'"
+          [disabled]="isSubmitting"
           (click)="onNext()"
         >
-          {{ currentStep === 3 ? '⬡ Enregistrer et distribuer' : 'Suivant' }}
+          {{ currentStep === 3 ? (isSubmitting ? 'Enregistrement...' : '⬡ Enregistrer et distribuer') : 'Suivant' }}
         </button>
       </div>
     </div>
@@ -543,6 +555,20 @@ import { Router } from '@angular/router';
       min-width: 220px;
     }
 
+    .btn-next:disabled,
+    .btn-finish:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .submit-error {
+      margin: 0;
+      color: #b91c1c;
+      font-size: 13px;
+      font-weight: 600;
+      flex: 1;
+    }
+
     @media (max-width: 900px) {
       .grid.two {
         grid-template-columns: 1fr;
@@ -566,6 +592,7 @@ import { Router } from '@angular/router';
   `]
 })
 export class EnregistrerCourrierComponent {
+  private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
   currentStep = 1;
 
@@ -583,6 +610,8 @@ export class EnregistrerCourrierComponent {
   destinataire = '';
   modeRemise: 'soft' | 'hard' | 'both' = 'both';
   instructions = '';
+  isSubmitting = false;
+  submitError = '';
 
   goToStep(step: number) {
     this.currentStep = step;
@@ -608,10 +637,83 @@ export class EnregistrerCourrierComponent {
 
   onNext() {
     if (this.currentStep < 3) {
+      if (this.currentStep === 1 && (!this.nomExpediteur.trim() || !this.objet.trim())) {
+        this.submitError = 'Veuillez renseigner au minimum l’expéditeur et l’objet.';
+        return;
+      }
+
+      this.submitError = '';
       this.currentStep += 1;
       return;
     }
 
-    this.router.navigate(['/distributions']);
+    if (!this.destinataire.trim()) {
+      this.submitError = 'Veuillez sélectionner un destinataire avant de continuer.';
+      return;
+    }
+
+    this.submitError = '';
+    this.isSubmitting = true;
+
+    const payload = {
+      documentType: this.typeExpediteur === 'Interne' ? 'PILIER' : 'EXTERNE',
+      receivedDate: new Date().toISOString().slice(0, 10),
+      sender: this.nomExpediteur.trim(),
+      subject: this.objet.trim(),
+      category: this.typeDocument,
+      confidentiality: this.mapConfidentialite(),
+      observations: this.buildObservations()
+    };
+
+    this.http.post<CreateReceptionDocumentResponse>(`${API_BASE_URL}/reception/documents`, payload).subscribe({
+      next: ({ document }) => {
+        if (this.modeRemise === 'hard' || this.modeRemise === 'both') {
+          this.http.post(`${API_BASE_URL}/reception/distributions/${document.id}/generate-bordereau`, {}).subscribe({
+            next: () => {
+              this.isSubmitting = false;
+              this.router.navigate(['/distributions']);
+            },
+            error: () => {
+              this.isSubmitting = false;
+              this.submitError = 'Courrier créé, mais échec de génération du bordereau.';
+            }
+          });
+          return;
+        }
+
+        this.isSubmitting = false;
+        this.router.navigate(['/distributions']);
+      },
+      error: () => {
+        this.isSubmitting = false;
+        this.submitError = 'Échec de l’enregistrement du courrier. Réessayez.';
+      }
+    });
+
+  }
+
+  private mapConfidentialite(): 'PUBLIC' | 'INTERNE' | 'CONFIDENTIEL' {
+    if (this.confidentialite === 'Confidentiel') {
+      return 'CONFIDENTIEL';
+    }
+
+    if (this.confidentialite === 'Interne') {
+      return 'INTERNE';
+    }
+
+    return 'PUBLIC';
+  }
+
+  private buildObservations() {
+    const values = [
+      this.organisme ? `Organisme: ${this.organisme}` : '',
+      this.reference ? `Référence: ${this.reference}` : '',
+      this.description ? `Description: ${this.description}` : '',
+      this.destinataire ? `Destinataire: ${this.destinataire}` : '',
+      this.instructions ? `Instruction: ${this.instructions}` : '',
+      this.fichierNom ? `Fichier: ${this.fichierNom}` : ''
+    ].filter(Boolean);
+
+    return values.join(' | ');
   }
 }
