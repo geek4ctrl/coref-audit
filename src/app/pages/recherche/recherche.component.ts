@@ -378,7 +378,7 @@ export class RechercheComponent {
       status: normalizedStatus,
       statusTone: isDelivered ? 'success' : 'info',
       delay: isDelivered ? 'À jour' : 'En attente',
-      delayTone: isDelivered ? 'muted' : 'warning',
+      delayTone: isDelivered ? 'muted' : 'danger',
       owner: item.sender,
       date: this.formatDate(item.createdAt),
       tag: item.category
