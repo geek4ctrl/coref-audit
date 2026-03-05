@@ -1,6 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { StatusCardComponent, StatusCard } from '../../shared/status-card/status-card.component';
 import { API_BASE_URL, AuthService } from '../../auth/auth.service';
 
@@ -59,91 +60,161 @@ interface DashboardDocument {
   imports: [CommonModule, StatusCardComponent],
   template: `
     <div class="dashboard">
-      <div class="page-heading">
-        <div>
-          <h2 class="page-title">{{ pageTitle }}</h2>
-          <p class="page-subtitle">{{ pageSubtitle }}</p>
-        </div>
-      </div>
-
-      <div class="status-cards-grid">
-        @for (card of statusCards; track card.title) {
-          <app-status-card [card]="card" />
-        }
-      </div>
-
-      <div class="filters-card">
-        <div class="filters-title">Filtres rapides:</div>
-        <div class="filters-row">
-          <div class="filter-chips">
-            @for (filter of quickFilters; track filter.label) {
-              <button class="filter-chip" [class.active]="filter.active">
-                <span class="chip-label">{{ filter.label }}</span>
-                <span class="chip-count">{{ filter.count }}</span>
-              </button>
-            }
-          </div>
-          <button class="pill-action">Par pilier</button>
-        </div>
-      </div>
-
-      <div class="table-card">
-        <div class="table-header">
+      @if (isAssistantMode) {
+        <div class="assistant-page-heading">
           <div>
-            <h3 class="table-title">Documents en cours</h3>
-            <p class="table-subtitle">{{ documents.length }} documents</p>
+            <h2 class="assistant-page-title">Dashboard Assistante</h2>
+            <p class="assistant-page-subtitle">Bonjour {{ assistantDisplayName }}, voici un aperçu de votre activité</p>
+          </div>
+          <div class="assistant-date">{{ todayLabel }}</div>
+        </div>
+
+        <div class="assistant-kpi-grid">
+          @for (card of assistantCards; track card.title) {
+            <div class="assistant-kpi-card">
+              <div class="assistant-kpi-top">
+                <div class="assistant-kpi-title">{{ card.title }}</div>
+                <div [class]="'assistant-kpi-icon ' + card.iconTone">{{ card.icon }}</div>
+              </div>
+              <div class="assistant-kpi-count">{{ card.count }}</div>
+              <div class="assistant-kpi-note">{{ card.note }}</div>
+            </div>
+          }
+        </div>
+
+        <div class="assistant-panel">
+          <div class="assistant-panel-title">Actions rapides</div>
+          <div class="assistant-actions-grid">
+            <button class="assistant-action" (click)="openFirstDocumentForClassification()">
+              <span class="assistant-action-icon">◻</span>
+              <span>
+                <strong>Classer un document</strong>
+                <small>Annoter et catégoriser</small>
+              </span>
+            </button>
+            <button class="assistant-action" (click)="goToSentView()">
+              <span class="assistant-action-icon">✈</span>
+              <span>
+                <strong>Voir envois au Chef</strong>
+                <small>Documents transférés</small>
+              </span>
+            </button>
+            <button class="assistant-action" (click)="goToSearch()">
+              <span class="assistant-action-icon">▣</span>
+              <span>
+                <strong>Rechercher</strong>
+                <small>Trouver un document</small>
+              </span>
+            </button>
           </div>
         </div>
-        <div class="table-wrapper">
-          <table class="documents-table">
-            <thead>
-              <tr>
-                <th>Numéro</th>
-                <th>Objet</th>
-                <th>Chez qui</th>
-                <th>Statut</th>
-                <th>Dernière action</th>
-                <th>Retard</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (doc of documents; track doc.number) {
-                <tr>
-                  <td>
-                    <div class="doc-number">{{ doc.number }}</div>
-                  </td>
-                  <td>
-                    <div class="doc-title">{{ doc.object }}</div>
-                    <div class="doc-meta">{{ doc.type }}</div>
-                  </td>
-                  <td>
-                    <div class="doc-owner">{{ doc.owner }}</div>
-                    <div class="doc-meta">{{ doc.ownerRole }}</div>
-                  </td>
-                  <td>
-                    <span [class]="'status-pill ' + doc.statusTone">{{ doc.status }}</span>
-                  </td>
-                  <td>
-                    <div class="doc-owner">{{ doc.lastAction }}</div>
-                    <div class="doc-meta">{{ doc.lastActionNote }}</div>
-                  </td>
-                  <td>
-                    <span [class]="'delay-pill ' + doc.delayTone">{{ doc.delay }}</span>
-                  </td>
-                  <td>
-                    <div class="action-buttons">
-                      <button class="icon-btn" aria-label="Classer" (click)="classifyDocument(doc.id)" [disabled]="!isAssistantMode || isBusy(doc.id)">👁️</button>
-                      <button class="icon-btn" aria-label="Traiter" (click)="markTreated(doc.id)" [disabled]="!isAssistantMode || isBusy(doc.id)">⏱️</button>
-                      <button class="icon-btn" aria-label="Envoyer" (click)="sendToChief(doc.id)" [disabled]="!isAssistantMode || isBusy(doc.id)">📨</button>
-                    </div>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
+
+        <div class="assistant-panel assistant-list-panel">
+          <div class="assistant-list-header">
+            <div class="assistant-panel-title">Derniers documents reçus</div>
+            <button class="assistant-see-all" (click)="goToSearch()">Voir tout →</button>
+          </div>
+          @for (doc of recentAssistantDocuments; track doc.id) {
+            <div class="assistant-doc-row">
+              <div>
+                <div class="assistant-doc-meta">{{ doc.number }} <span class="assistant-priority-pill">{{ doc.delay === 'En retard' ? 'Urgent' : 'Normal' }}</span></div>
+                <div class="assistant-doc-subject">{{ doc.object }}</div>
+                <div class="assistant-doc-footer">Expéditeur: {{ doc.owner }} • {{ doc.lastAction }}</div>
+              </div>
+              <button class="assistant-open-btn" (click)="classifyDocument(doc.id)" [disabled]="isBusy(doc.id)">Ouvrir</button>
+            </div>
+          }
+          @if (!recentAssistantDocuments.length && !isLoading) {
+            <div class="assistant-empty">Aucun document reçu.</div>
+          }
         </div>
-      </div>
+      } @else {
+        <div class="page-heading">
+          <div>
+            <h2 class="page-title">{{ pageTitle }}</h2>
+            <p class="page-subtitle">{{ pageSubtitle }}</p>
+          </div>
+        </div>
+
+        <div class="status-cards-grid">
+          @for (card of statusCards; track card.title) {
+            <app-status-card [card]="card" />
+          }
+        </div>
+
+        <div class="filters-card">
+          <div class="filters-title">Filtres rapides:</div>
+          <div class="filters-row">
+            <div class="filter-chips">
+              @for (filter of quickFilters; track filter.label) {
+                <button class="filter-chip" [class.active]="filter.active">
+                  <span class="chip-label">{{ filter.label }}</span>
+                  <span class="chip-count">{{ filter.count }}</span>
+                </button>
+              }
+            </div>
+            <button class="pill-action">Par pilier</button>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-header">
+            <div>
+              <h3 class="table-title">Documents en cours</h3>
+              <p class="table-subtitle">{{ documents.length }} documents</p>
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table class="documents-table">
+              <thead>
+                <tr>
+                  <th>Numéro</th>
+                  <th>Objet</th>
+                  <th>Chez qui</th>
+                  <th>Statut</th>
+                  <th>Dernière action</th>
+                  <th>Retard</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (doc of documents; track doc.number) {
+                  <tr>
+                    <td>
+                      <div class="doc-number">{{ doc.number }}</div>
+                    </td>
+                    <td>
+                      <div class="doc-title">{{ doc.object }}</div>
+                      <div class="doc-meta">{{ doc.type }}</div>
+                    </td>
+                    <td>
+                      <div class="doc-owner">{{ doc.owner }}</div>
+                      <div class="doc-meta">{{ doc.ownerRole }}</div>
+                    </td>
+                    <td>
+                      <span [class]="'status-pill ' + doc.statusTone">{{ doc.status }}</span>
+                    </td>
+                    <td>
+                      <div class="doc-owner">{{ doc.lastAction }}</div>
+                      <div class="doc-meta">{{ doc.lastActionNote }}</div>
+                    </td>
+                    <td>
+                      <span [class]="'delay-pill ' + doc.delayTone">{{ doc.delay }}</span>
+                    </td>
+                    <td>
+                      <div class="action-buttons">
+                        <button class="icon-btn" aria-label="Classer" (click)="classifyDocument(doc.id)" [disabled]="!isAssistantMode || isBusy(doc.id)">👁️</button>
+                        <button class="icon-btn" aria-label="Traiter" (click)="markTreated(doc.id)" [disabled]="!isAssistantMode || isBusy(doc.id)">⏱️</button>
+                        <button class="icon-btn" aria-label="Envoyer" (click)="sendToChief(doc.id)" [disabled]="!isAssistantMode || isBusy(doc.id)">📨</button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
     </div>
   `,
   styles: [`
@@ -152,7 +223,7 @@ interface DashboardDocument {
       width: 100%;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 18px;
     }
 
     .page-heading {
@@ -172,6 +243,255 @@ interface DashboardDocument {
       font-size: 13px;
       color: #6b7280;
       margin: 0;
+    }
+
+    .assistant-page-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .assistant-page-title {
+      margin: 0;
+      font-size: 30px;
+      font-weight: 800;
+      color: #0b2f5c;
+      letter-spacing: -0.01em;
+    }
+
+    .assistant-page-subtitle {
+      margin: 6px 0 0;
+      color: #475569;
+      font-size: 15px;
+    }
+
+    .assistant-date {
+      color: #334155;
+      font-size: 13px;
+      margin-top: 8px;
+      text-transform: capitalize;
+    }
+
+    .assistant-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .assistant-kpi-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 18px 20px;
+      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.07);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .assistant-kpi-card:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
+    }
+
+    .assistant-kpi-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      gap: 10px;
+    }
+
+    .assistant-kpi-title {
+      color: #0f172a;
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .assistant-kpi-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: #fff;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+    }
+
+    .assistant-kpi-icon.blue { background: #2563eb; }
+    .assistant-kpi-icon.green { background: #16a34a; }
+    .assistant-kpi-icon.orange { background: #f97316; }
+    .assistant-kpi-icon.red { background: #dc2626; }
+
+    .assistant-kpi-count {
+      color: #0b2f5c;
+      font-size: 38px;
+      font-weight: 800;
+      line-height: 1;
+      margin: 10px 0 6px;
+    }
+
+    .assistant-kpi-note {
+      color: #64748b;
+      font-size: 13px;
+    }
+
+    .assistant-panel {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 18px 20px;
+      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.07);
+    }
+
+    .assistant-panel-title {
+      margin: 0 0 14px;
+      color: #0b2f5c;
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    .assistant-actions-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .assistant-action {
+      border: 1px dashed #cbd5e1;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-align: left;
+      color: #0b2f5c;
+      cursor: pointer;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    }
+
+    .assistant-action:hover {
+      border-color: #93c5fd;
+      box-shadow: 0 8px 20px rgba(37, 99, 235, 0.12);
+      transform: translateY(-1px);
+    }
+
+    .assistant-action-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: #e2e8f0;
+      color: #0b2f5c;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+
+    .assistant-action strong {
+      display: block;
+      font-size: 17px;
+      line-height: 1.25;
+    }
+
+    .assistant-action small {
+      display: block;
+      color: #64748b;
+      margin-top: 2px;
+      font-size: 13px;
+    }
+
+    .assistant-list-panel {
+      padding-bottom: 10px;
+    }
+
+    .assistant-list-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .assistant-see-all {
+      border: none;
+      background: transparent;
+      color: #0b2f5c;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .assistant-doc-row {
+      border-top: 1px solid #e2e8f0;
+      padding: 16px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .assistant-doc-meta {
+      color: #64748b;
+      font-size: 12px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .assistant-priority-pill {
+      margin-left: 8px;
+      background: #f1f5f9;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+      border-radius: 999px;
+      padding: 1px 8px;
+      font-size: 11px;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .assistant-doc-subject {
+      color: #0f172a;
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .assistant-doc-footer {
+      color: #334155;
+      font-size: 13px;
+    }
+
+    .assistant-open-btn {
+      border: none;
+      background: #0b2f5c;
+      color: #fff;
+      border-radius: 10px;
+      padding: 10px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    .assistant-open-btn:hover:not(:disabled) {
+      background: #0e3d75;
+      transform: translateY(-1px);
+    }
+
+    .assistant-open-btn:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .assistant-empty {
+      color: #64748b;
+      font-size: 14px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 14px;
     }
 
     .status-cards-grid {
@@ -395,6 +715,40 @@ interface DashboardDocument {
     }
 
     @media (max-width: 1024px) {
+      .assistant-kpi-grid,
+      .assistant-actions-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .assistant-page-title {
+        font-size: 24px;
+      }
+
+      .assistant-page-subtitle,
+      .assistant-date {
+        font-size: 13px;
+      }
+
+      .assistant-panel-title {
+        font-size: 22px;
+      }
+
+      .assistant-action strong {
+        font-size: 16px;
+      }
+
+      .assistant-action small,
+      .assistant-see-all,
+      .assistant-doc-meta,
+      .assistant-doc-footer,
+      .assistant-open-btn {
+        font-size: 12px;
+      }
+
+      .assistant-doc-subject {
+        font-size: 16px;
+      }
+
       .status-cards-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
@@ -410,6 +764,18 @@ interface DashboardDocument {
     }
 
     @media (max-width: 768px) {
+      .assistant-page-heading,
+      .assistant-list-header,
+      .assistant-doc-row {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .assistant-kpi-grid,
+      .assistant-actions-grid {
+        grid-template-columns: 1fr;
+      }
+
       .status-cards-grid {
         grid-template-columns: 1fr;
       }
@@ -423,12 +789,15 @@ interface DashboardDocument {
 export class DashboardComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
   pageTitle = 'Dashboard Chef';
   pageSubtitle = "Centre de contrôle — Vue d'ensemble en 5 secondes";
   isAssistantMode = false;
   isLoading = false;
   pendingDocumentIds = new Set<number>();
+  assistantDisplayName = 'Assistante';
+  todayLabel = '';
 
   statusCards: StatusCard[] = [
     {
@@ -520,6 +889,13 @@ export class DashboardComponent implements OnInit {
 
   ngOnInit(): void {
     this.isAssistantMode = this.authService.getRole() === 'ASSISTANT_CHEF';
+    this.assistantDisplayName = this.authService.user()?.name || 'Assistante';
+    this.todayLabel = new Intl.DateTimeFormat('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    }).format(new Date());
     if (!this.isAssistantMode) {
       return;
     }
@@ -590,6 +966,59 @@ export class DashboardComponent implements OnInit {
 
   isBusy(documentId: number): boolean {
     return this.pendingDocumentIds.has(documentId);
+  }
+
+  get assistantCards(): Array<{ title: string; count: number; note: string; icon: string; iconTone: string }> {
+    return [
+      {
+        title: 'À classer / Annoter',
+        count: this.quickFilters.find((item) => item.label === 'À traiter')?.count ?? 0,
+        note: 'Documents reçus en attente',
+        icon: '◻',
+        iconTone: 'blue'
+      },
+      {
+        title: 'Envoyés au Chef',
+        count: this.quickFilters.find((item) => item.label === 'Envoyés par moi')?.count ?? 0,
+        note: 'Documents transférés',
+        icon: '✈',
+        iconTone: 'green'
+      },
+      {
+        title: 'À traiter par Chef',
+        count: this.quickFilters.find((item) => item.label === 'Sans accusé réception')?.count ?? 0,
+        note: 'Documents non traités',
+        icon: '◷',
+        iconTone: 'orange'
+      },
+      {
+        title: 'Documents urgents',
+        count: this.quickFilters.find((item) => item.label === 'En retard')?.count ?? 0,
+        note: 'Nécessitent une action rapide',
+        icon: '!',
+        iconTone: 'red'
+      }
+    ];
+  }
+
+  get recentAssistantDocuments(): DashboardDocument[] {
+    return this.documents.slice(0, 5);
+  }
+
+  openFirstDocumentForClassification(): void {
+    const firstDocument = this.recentAssistantDocuments[0];
+    if (!firstDocument) {
+      return;
+    }
+    this.classifyDocument(firstDocument.id);
+  }
+
+  goToSentView(): void {
+    this.router.navigate(['/dashboard']);
+  }
+
+  goToSearch(): void {
+    this.router.navigate(['/recherche']);
   }
 
   private loadAssistantDashboard(): void {

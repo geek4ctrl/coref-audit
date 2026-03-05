@@ -206,6 +206,28 @@ export class SidebarComponent {
   readonly navSections = computed<NavSection[]>(() => this.buildNavSections(this.authService.getRole()));
 
   private buildNavSections(role: UserRole | null): NavSection[] {
+    if (role === 'ASSISTANT_CHEF') {
+      return [
+        {
+          title: 'BUREAU ASSISTANTE',
+          items: [
+            { label: 'Dashboard', route: '/dashboard', icon: '⌘' },
+            { label: 'À classer / Annoter', route: '/dashboard', icon: '◻' },
+            { label: 'Rédiger un document', route: '/nouveau', icon: '▣' },
+            { label: 'Envoyés au Chef', route: '/dashboard', icon: '✈' },
+            { label: 'À traiter par Chef', route: '/dashboard', icon: '◷' }
+          ]
+        },
+        {
+          title: '',
+          items: [
+            { label: 'Recherche', route: '/recherche', icon: '🔍' },
+            { label: 'Messagerie', route: '/messagerie', icon: '✉️' }
+          ]
+        }
+      ];
+    }
+
     if (role === 'RECEPTION') {
       return [
         {
