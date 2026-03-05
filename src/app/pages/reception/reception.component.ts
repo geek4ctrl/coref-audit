@@ -868,7 +868,12 @@ export class ReceptionComponent {
     const form = this.createForm();
     const payload: ReceptionCreatePayload = {
       ...form,
-      documentType: this.selectedDocumentType()
+      documentType: this.selectedDocumentType(),
+      receivedDate: this.normalizeDate(form.receivedDate),
+      sender: form.sender.trim(),
+      subject: form.subject.trim(),
+      category: form.category.trim(),
+      observations: form.observations.trim()
     };
 
     if (!payload.receivedDate || !payload.sender || !payload.subject || !payload.category || !payload.confidentiality) {
@@ -886,8 +891,19 @@ export class ReceptionComponent {
         this.resetCreateForm();
         this.loadRecentDocuments();
       },
-      error: () => {
+      error: (error) => {
         this.isSaving.set(false);
+        const apiError = error?.error?.error;
+        if (typeof apiError === 'string' && apiError.length > 0) {
+          this.modalError.set(`Échec de l’enregistrement: ${apiError}`);
+          return;
+        }
+
+        if (error?.status === 401) {
+          this.modalError.set('Session expirée. Veuillez vous reconnecter.');
+          return;
+        }
+
         this.modalError.set('Échec de l’enregistrement. Vérifiez les champs et réessayez.');
       }
     });
@@ -961,5 +977,28 @@ export class ReceptionComponent {
       return 'Document créé';
     }
     return status;
+  }
+
+  private normalizeDate(value: string) {
+    if (!value) {
+      return value;
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return value;
+    }
+
+    const slashMatch = value.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+    if (slashMatch) {
+      const [, year, month, day] = slashMatch;
+      return `${year}-${month}-${day}`;
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return value;
+    }
+
+    return parsed.toISOString().slice(0, 10);
   }
 }
