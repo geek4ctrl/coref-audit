@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
+import { ActivatedRoute } from '@angular/router';
 import { API_BASE_URL } from '../../auth/auth.service';
 
 interface DistributionDocument {
@@ -265,6 +266,7 @@ interface DistributionOverviewResponse {
 })
 export class DistributionsComponent implements OnInit {
   private readonly http = inject(HttpClient);
+  private readonly route = inject(ActivatedRoute);
 
   activeTab = signal<'todo' | 'done'>('todo');
   isLoading = signal(false);
@@ -276,6 +278,11 @@ export class DistributionsComponent implements OnInit {
   distributedToday = signal<DistributionDocument[]>([]);
 
   ngOnInit(): void {
+    const tab = this.route.snapshot.queryParamMap.get('tab');
+    if (tab === 'done') {
+      this.activeTab.set('done');
+    }
+
     this.loadOverview();
   }
 

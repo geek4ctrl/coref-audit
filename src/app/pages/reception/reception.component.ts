@@ -17,6 +17,7 @@ interface SummaryCard {
   value: number;
   subtitle: string;
   icon: string;
+  action?: 'goToDistributedToday';
 }
 
 interface ReceptionDocument {
@@ -43,6 +44,7 @@ interface ReceptionDashboardStatsResponse {
   toScan: number;
   toDistribute: number;
   pendingBordereaux: number;
+  distributedThisMonth: number;
 }
 
 interface ReceptionCreatePayload {
@@ -92,7 +94,7 @@ interface ReceptionCreatePayload {
 
       <section class="summary-grid" aria-label="Synthèse réception">
         @for (item of summaryCards(); track item.title) {
-          <article class="summary-card">
+          <article class="summary-card" [class.clickable]="item.action" (click)="onSummaryCardClick(item)">
             <p class="summary-title">{{ item.icon }} {{ item.title }}</p>
             <p class="summary-value">{{ item.value }}</p>
             <p class="summary-subtitle">{{ item.subtitle }}</p>
@@ -407,6 +409,15 @@ interface ReceptionCreatePayload {
       border-radius: 14px;
       padding: 18px 20px;
       min-height: 112px;
+    }
+
+    .summary-card.clickable {
+      cursor: pointer;
+    }
+
+    .summary-card.clickable:hover {
+      border-color: #93c5fd;
+      box-shadow: 0 0 0 1px #93c5fd;
     }
 
     .summary-title {
@@ -813,6 +824,7 @@ export class ReceptionComponent {
   toScanCount = signal(0);
   toDistributeCount = signal(0);
   pendingBordereauxCount = signal(0);
+  distributedThisMonth = signal(0);
 
   createForm = signal<ReceptionCreatePayload>({
     documentType: 'EXTERNE',
@@ -853,7 +865,13 @@ export class ReceptionComponent {
   totalDocuments = signal(0);
 
   readonly summaryCards = computed<SummaryCard[]>(() => [
-    { title: 'Ce mois', value: 0, subtitle: 'Documents distribués', icon: '◷' },
+    {
+      title: 'Ce mois',
+      value: this.distributedThisMonth(),
+      subtitle: 'Documents distribués',
+      icon: '◷',
+      action: 'goToDistributedToday'
+    },
     { title: 'Total', value: this.totalDocuments(), subtitle: 'Documents enregistrés', icon: '↗' }
   ]);
 
@@ -938,6 +956,12 @@ export class ReceptionComponent {
     }
   }
 
+  onSummaryCardClick(item: SummaryCard) {
+    if (item.action === 'goToDistributedToday') {
+      this.router.navigate(['/distributions'], { queryParams: { tab: 'done' } });
+    }
+  }
+
   private resetCreateForm() {
     this.selectedDocumentType.set('EXTERNE');
     this.createForm.set({
@@ -988,12 +1012,14 @@ export class ReceptionComponent {
         this.toScanCount.set(response.toScan ?? 0);
         this.toDistributeCount.set(response.toDistribute ?? 0);
         this.pendingBordereauxCount.set(response.pendingBordereaux ?? 0);
+        this.distributedThisMonth.set(response.distributedThisMonth ?? 0);
       },
       error: () => {
         this.entriesToday.set(0);
         this.toScanCount.set(0);
         this.toDistributeCount.set(0);
         this.pendingBordereauxCount.set(0);
+        this.distributedThisMonth.set(0);
       }
     });
   }
