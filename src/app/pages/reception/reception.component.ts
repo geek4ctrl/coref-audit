@@ -38,6 +38,13 @@ interface ReceptionRecentResponse {
   documents: ReceptionDocumentApi[];
 }
 
+interface ReceptionDashboardStatsResponse {
+  entriesToday: number;
+  toScan: number;
+  toDistribute: number;
+  pendingBordereaux: number;
+}
+
 interface ReceptionCreatePayload {
   documentType: 'EXTERNE' | 'PILIER';
   receivedDate: string;
@@ -67,7 +74,7 @@ interface ReceptionCreatePayload {
       </header>
 
       <section class="stats-grid" aria-label="Indicateurs réception">
-        @for (card of statCards; track card.subtitle) {
+        @for (card of statCards(); track card.subtitle) {
           <article
             class="stat-card"
             [class.active]="$index === 0"
@@ -802,6 +809,10 @@ export class ReceptionComponent {
   selectedDocumentType = signal<'EXTERNE' | 'PILIER'>('EXTERNE');
   isSaving = signal(false);
   modalError = signal('');
+  entriesToday = signal(0);
+  toScanCount = signal(0);
+  toDistributeCount = signal(0);
+  pendingBordereauxCount = signal(0);
 
   createForm = signal<ReceptionCreatePayload>({
     documentType: 'EXTERNE',
@@ -813,12 +824,12 @@ export class ReceptionComponent {
     observations: ''
   });
 
-  statCards: StatCard[] = [
-    { value: 0, subtitle: 'Entrées du jour', icon: '◈', accent: 'blue', action: 'none' },
-    { value: 1, subtitle: 'À scanner', icon: '⬚', accent: 'orange', action: 'goToBordereaux' },
-    { value: 1, subtitle: 'À distribuer', icon: '➤', accent: 'sky', action: 'goToDistributions' },
-    { value: 0, subtitle: 'Bordereaux en attente', icon: '⬒', accent: 'purple', action: 'goToBordereaux' }
-  ];
+  readonly statCards = computed<StatCard[]>(() => [
+    { value: this.entriesToday(), subtitle: 'Entrées du jour', icon: '◈', accent: 'blue', action: 'none' },
+    { value: this.toScanCount(), subtitle: 'À scanner', icon: '⬚', accent: 'orange', action: 'goToBordereaux' },
+    { value: this.toDistributeCount(), subtitle: 'À distribuer', icon: '➤', accent: 'sky', action: 'goToDistributions' },
+    { value: this.pendingBordereauxCount(), subtitle: 'Bordereaux en attente', icon: '⬒', accent: 'purple', action: 'goToBordereaux' }
+  ]);
 
   categories: string[] = [
     "Courrier d'arrivée",
@@ -848,6 +859,7 @@ export class ReceptionComponent {
 
   ngOnInit() {
     this.loadRecentDocuments();
+    this.loadDashboardStats();
   }
 
   openCreateModal() {
@@ -890,6 +902,7 @@ export class ReceptionComponent {
         this.closeCreateModal();
         this.resetCreateForm();
         this.loadRecentDocuments();
+        this.loadDashboardStats();
       },
       error: (error) => {
         this.isSaving.set(false);
@@ -962,6 +975,27 @@ export class ReceptionComponent {
           this.recentDocuments.set([]);
         }
       });
+  }
+
+  private loadDashboardStats() {
+    if (!this.authService.isAuthenticated()) {
+      return;
+    }
+
+    this.http.get<ReceptionDashboardStatsResponse>(`${API_BASE_URL}/reception/dashboard/stats`).subscribe({
+      next: (response) => {
+        this.entriesToday.set(response.entriesToday ?? 0);
+        this.toScanCount.set(response.toScan ?? 0);
+        this.toDistributeCount.set(response.toDistribute ?? 0);
+        this.pendingBordereauxCount.set(response.pendingBordereaux ?? 0);
+      },
+      error: () => {
+        this.entriesToday.set(0);
+        this.toScanCount.set(0);
+        this.toDistributeCount.set(0);
+        this.pendingBordereauxCount.set(0);
+      }
+    });
   }
 
   private formatDateTime(value: string) {
