@@ -1,6 +1,58 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { StatusCardComponent, StatusCard } from '../../shared/status-card/status-card.component';
+import { API_BASE_URL, AuthService } from '../../auth/auth.service';
+
+interface AssistantDashboardResponse {
+  cards: {
+    toReceive: number;
+    toProcess: number;
+    inProgress: number;
+    done: number;
+  };
+  quickFilters: {
+    all: number;
+    toProcess: number;
+    assignedToMe: number;
+    sentByMe: number;
+    noAck: number;
+    delayed: number;
+    blocked: number;
+    treatedThisWeek: number;
+  };
+  documents: AssistantDashboardDocument[];
+}
+
+interface AssistantDashboardDocument {
+  id: number;
+  number: string;
+  object: string;
+  type: string;
+  owner: string;
+  ownerRole: string;
+  status: string;
+  statusTone: 'info' | 'warning' | 'success';
+  lastActionAt: string;
+  lastActionNote: string;
+  delay: string;
+  delayTone: 'danger' | 'muted';
+}
+
+interface DashboardDocument {
+  id: number;
+  number: string;
+  object: string;
+  type: string;
+  owner: string;
+  ownerRole: string;
+  status: string;
+  statusTone: 'info' | 'warning' | 'success';
+  lastAction: string;
+  lastActionNote: string;
+  delay: string;
+  delayTone: 'danger' | 'muted';
+}
 
 @Component({
   selector: 'app-dashboard',
@@ -9,8 +61,8 @@ import { StatusCardComponent, StatusCard } from '../../shared/status-card/status
     <div class="dashboard">
       <div class="page-heading">
         <div>
-          <h2 class="page-title">Dashboard Chef</h2>
-          <p class="page-subtitle">Centre de contrôle — Vue d'ensemble en 5 secondes</p>
+          <h2 class="page-title">{{ pageTitle }}</h2>
+          <p class="page-subtitle">{{ pageSubtitle }}</p>
         </div>
       </div>
 
@@ -70,20 +122,20 @@ import { StatusCardComponent, StatusCard } from '../../shared/status-card/status
                     <div class="doc-meta">{{ doc.ownerRole }}</div>
                   </td>
                   <td>
-                    <span class="status-pill" [ngClass]="doc.statusTone">{{ doc.status }}</span>
+                    <span [class]="'status-pill ' + doc.statusTone">{{ doc.status }}</span>
                   </td>
                   <td>
                     <div class="doc-owner">{{ doc.lastAction }}</div>
                     <div class="doc-meta">{{ doc.lastActionNote }}</div>
                   </td>
                   <td>
-                    <span class="delay-pill" [ngClass]="doc.delayTone">{{ doc.delay }}</span>
+                    <span [class]="'delay-pill ' + doc.delayTone">{{ doc.delay }}</span>
                   </td>
                   <td>
                     <div class="action-buttons">
-                      <button class="icon-btn" aria-label="Voir">👁️</button>
-                      <button class="icon-btn" aria-label="Rappel">⏱️</button>
-                      <button class="icon-btn" aria-label="Envoyer">📨</button>
+                      <button class="icon-btn" aria-label="Classer" (click)="classifyDocument(doc.id)" [disabled]="!isAssistantMode || isBusy(doc.id)">👁️</button>
+                      <button class="icon-btn" aria-label="Traiter" (click)="markTreated(doc.id)" [disabled]="!isAssistantMode || isBusy(doc.id)">⏱️</button>
+                      <button class="icon-btn" aria-label="Envoyer" (click)="sendToChief(doc.id)" [disabled]="!isAssistantMode || isBusy(doc.id)">📨</button>
                     </div>
                   </td>
                 </tr>
@@ -368,7 +420,16 @@ import { StatusCardComponent, StatusCard } from '../../shared/status-card/status
     }
   `]
 })
-export class DashboardComponent {
+export class DashboardComponent implements OnInit {
+  private readonly http = inject(HttpClient);
+  private readonly authService = inject(AuthService);
+
+  pageTitle = 'Dashboard Chef';
+  pageSubtitle = "Centre de contrôle — Vue d'ensemble en 5 secondes";
+  isAssistantMode = false;
+  isLoading = false;
+  pendingDocumentIds = new Set<number>();
+
   statusCards: StatusCard[] = [
     {
       title: 'À recevoir',
@@ -412,8 +473,9 @@ export class DashboardComponent {
     { label: 'Traités cette semaine', count: 0 }
   ];
 
-  documents = [
+  documents: DashboardDocument[] = [
     {
+      id: 1,
       number: 'COREF-2026-0001',
       object: 'Réforme de la TVA - Analyse d\'impact budgétaire',
       type: 'Rapport',
@@ -427,6 +489,7 @@ export class DashboardComponent {
       delayTone: 'danger'
     },
     {
+      id: 2,
       number: 'COREF-2026-0002',
       object: 'Demande de congé - Personnel DRH',
       type: 'Demande_conge',
@@ -440,6 +503,7 @@ export class DashboardComponent {
       delayTone: 'danger'
     },
     {
+      id: 3,
       number: 'COREF-2026-0003',
       object: 'Note de service - Budget 2026',
       type: 'Note',
@@ -453,4 +517,146 @@ export class DashboardComponent {
       delayTone: 'muted'
     }
   ];
+
+  ngOnInit(): void {
+    this.isAssistantMode = this.authService.getRole() === 'ASSISTANT_CHEF';
+    if (!this.isAssistantMode) {
+      return;
+    }
+
+    this.pageTitle = 'Dashboard Assistant';
+    this.pageSubtitle = 'Suivi opérationnel des courriers à classer et transmettre';
+    this.loadAssistantDashboard();
+  }
+
+  classifyDocument(documentId: number): void {
+    if (!this.isAssistantMode || this.pendingDocumentIds.has(documentId)) {
+      return;
+    }
+
+    this.pendingDocumentIds.add(documentId);
+    this.http
+      .patch(`${API_BASE_URL}/assistant/documents/${documentId}/classify`, {
+        status: 'En cours'
+      })
+      .subscribe({
+        next: () => {
+          this.pendingDocumentIds.delete(documentId);
+          this.loadAssistantDashboard();
+        },
+        error: () => {
+          this.pendingDocumentIds.delete(documentId);
+        }
+      });
+  }
+
+  sendToChief(documentId: number): void {
+    if (!this.isAssistantMode || this.pendingDocumentIds.has(documentId)) {
+      return;
+    }
+
+    this.pendingDocumentIds.add(documentId);
+    this.http
+      .patch(`${API_BASE_URL}/assistant/documents/${documentId}/send-to-chief`, {})
+      .subscribe({
+        next: () => {
+          this.pendingDocumentIds.delete(documentId);
+          this.loadAssistantDashboard();
+        },
+        error: () => {
+          this.pendingDocumentIds.delete(documentId);
+        }
+      });
+  }
+
+  markTreated(documentId: number): void {
+    if (!this.isAssistantMode || this.pendingDocumentIds.has(documentId)) {
+      return;
+    }
+
+    this.pendingDocumentIds.add(documentId);
+    this.http
+      .patch(`${API_BASE_URL}/assistant/documents/${documentId}/mark-treated`, {})
+      .subscribe({
+        next: () => {
+          this.pendingDocumentIds.delete(documentId);
+          this.loadAssistantDashboard();
+        },
+        error: () => {
+          this.pendingDocumentIds.delete(documentId);
+        }
+      });
+  }
+
+  isBusy(documentId: number): boolean {
+    return this.pendingDocumentIds.has(documentId);
+  }
+
+  private loadAssistantDashboard(): void {
+    this.isLoading = true;
+    this.http.get<AssistantDashboardResponse>(`${API_BASE_URL}/assistant/dashboard`).subscribe({
+      next: (response) => {
+        this.statusCards = [
+          {
+            title: 'À recevoir',
+            count: response.cards.toReceive,
+            description: 'Documents en réception',
+            color: '#1d4ed8',
+            icon: '📄'
+          },
+          {
+            title: 'À traiter',
+            count: response.cards.toProcess,
+            description: 'Nécessitent votre action',
+            color: '#0b3a78',
+            emphasis: true,
+            icon: '📝'
+          },
+          {
+            title: 'En cours',
+            count: response.cards.inProgress,
+            description: 'Documents en traitement',
+            color: '#d97706',
+            icon: '🔄'
+          },
+          {
+            title: 'Terminés',
+            count: response.cards.done,
+            description: 'Documents archivés',
+            color: '#dc2626',
+            icon: '🗂️'
+          }
+        ];
+
+        this.quickFilters = [
+          { label: 'Tous', count: response.quickFilters.all, active: true },
+          { label: 'À traiter', count: response.quickFilters.toProcess },
+          { label: 'Destinés à moi', count: response.quickFilters.assignedToMe },
+          { label: 'Envoyés par moi', count: response.quickFilters.sentByMe },
+          { label: 'Sans accusé réception', count: response.quickFilters.noAck },
+          { label: 'En retard', count: response.quickFilters.delayed },
+          { label: 'Bloqués', count: response.quickFilters.blocked },
+          { label: 'Traités cette semaine', count: response.quickFilters.treatedThisWeek }
+        ];
+
+        this.documents = response.documents.map((document) => ({
+          ...document,
+          lastAction: this.formatDate(document.lastActionAt),
+          lastActionNote: document.lastActionNote
+        }));
+        this.isLoading = false;
+      },
+      error: () => {
+        this.isLoading = false;
+      }
+    });
+  }
+
+  private formatDate(value: string): string {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return '—';
+    }
+    return new Intl.DateTimeFormat('fr-FR').format(date);
+  }
 }
