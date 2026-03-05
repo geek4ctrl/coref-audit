@@ -16,6 +16,7 @@ import { DistributionsComponent } from './pages/distributions/distributions.comp
 import { BordereauxComponent } from './pages/bordereaux/bordereaux.component';
 import { EnregistrerCourrierComponent } from './pages/enregistrer-courrier/enregistrer-courrier.component';
 import { MessagerieComponent } from './pages/messagerie';
+import { AClasserAnnoterComponent } from './pages/a-classer-annoter/a-classer-annoter.component';
 import { authChildGuard, authGuard } from './auth/auth.guard';
 
 export const routes: Routes = [
@@ -31,6 +32,11 @@ export const routes: Routes = [
         path: 'dashboard',
         component: DashboardComponent,
         data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF', 'AUDITEUR'] },
+      },
+      {
+        path: 'a-classer-annoter',
+        component: AClasserAnnoterComponent,
+        data: { roles: ['ADMIN', 'ASSISTANT_CHEF'] },
       },
       {
         path: 'documents',
