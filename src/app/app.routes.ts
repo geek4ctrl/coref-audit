@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { DashboardLayoutComponent } from './layout/dashboard-layout.component';
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
+import { ReceptionComponent } from './pages/reception';
 import { EnvoiComponent } from './pages/envoi/envoi.component';
 import { CategoriesComponent } from './pages/categories/categories.component';
 import { NouveauDocumentComponent } from './pages/nouveau-document/nouveau-document.component';
@@ -14,6 +15,7 @@ import { LoginComponent } from './pages/login/login.component';
 import { DistributionsComponent } from './pages/distributions/distributions.component';
 import { BordereauxComponent } from './pages/bordereaux/bordereaux.component';
 import { EnregistrerCourrierComponent } from './pages/enregistrer-courrier/enregistrer-courrier.component';
+import { MessagerieComponent } from './pages/messagerie';
 import { authChildGuard, authGuard } from './auth/auth.guard';
 
 export const routes: Routes = [
@@ -48,8 +50,7 @@ export const routes: Routes = [
       },
       {
         path: 'reception',
-        loadComponent: () =>
-          import('./pages/reception/reception.component').then((m) => m.ReceptionComponent),
+        component: ReceptionComponent,
         data: { roles: ['ADMIN', 'RECEPTION'] },
       },
       {
@@ -69,8 +70,7 @@ export const routes: Routes = [
       },
       {
         path: 'messagerie',
-        loadComponent: () =>
-          import('./pages/messagerie/messagerie.component').then((m) => m.MessagerieComponent),
+        component: MessagerieComponent,
         data: { roles: ['ADMIN', 'RECEPTION'] },
       },
       {
