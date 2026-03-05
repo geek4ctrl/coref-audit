@@ -26,6 +26,15 @@ interface MessageItem {
     name: string;
     email: string;
   };
+  attachments: MessageAttachment[];
+}
+
+interface MessageAttachment {
+  id: number;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
 }
 
 interface MessageListResponse {
@@ -91,6 +100,12 @@ type MailTab = 'compose' | 'inbox' | 'sent';
               <label class="field-label" for="content">Message</label>
               <textarea id="content" class="field-input field-textarea" rows="6" [(ngModel)]="composeContent"></textarea>
 
+              <label class="field-label" for="attachment">Pièce jointe (optionnel)</label>
+              <input id="attachment" class="field-input" type="file" (change)="onAttachmentSelected($event)" />
+              @if (selectedAttachmentName()) {
+                <p class="attachment-name">Fichier: {{ selectedAttachmentName() }}</p>
+              }
+
               @if (composeError()) {
                 <p class="error">{{ composeError() }}</p>
               }
@@ -120,6 +135,20 @@ type MailTab = 'compose' | 'inbox' | 'sent';
                         {{ activeTab() === 'inbox' ? ('De: ' + message.sender.name) : ('À: ' + message.recipient.name) }}
                       </p>
                       <p class="message-body">{{ message.content }}</p>
+
+                      @if (message.attachments.length > 0) {
+                        <div class="attachment-list">
+                          @for (attachment of message.attachments; track attachment.id) {
+                            <button
+                              type="button"
+                              class="attachment-btn"
+                              (click)="downloadAttachment(message.id, attachment)"
+                            >
+                              📎 {{ attachment.fileName }}
+                            </button>
+                          }
+                        </div>
+                      }
 
                       @if (activeTab() === 'inbox' && !message.readAt) {
                         <button type="button" class="mark-read-btn" (click)="markAsRead(message.id)">Marquer lu</button>
@@ -291,6 +320,13 @@ type MailTab = 'compose' | 'inbox' | 'sent';
       cursor: pointer;
     }
 
+    .attachment-name {
+      margin: 6px 0 0;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
     .send-btn:disabled {
       opacity: 0.6;
       cursor: not-allowed;
@@ -353,6 +389,24 @@ type MailTab = 'compose' | 'inbox' | 'sent';
       color: #0f172a;
       font-size: 13px;
       white-space: pre-wrap;
+    }
+
+    .attachment-list {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .attachment-btn {
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #0f172a;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 10px;
+      cursor: pointer;
     }
 
     .mark-read-btn {
@@ -419,6 +473,9 @@ export class MessagerieComponent implements OnInit {
   composeRecipientId = 0;
   composeSubject = '';
   composeContent = '';
+  selectedAttachmentFile = signal<File | null>(null);
+
+  readonly selectedAttachmentName = computed(() => this.selectedAttachmentFile()?.name ?? '');
 
   readonly activeMessages = computed(() =>
     this.activeTab() === 'inbox' ? this.inboxMessages() : this.sentMessages()
@@ -439,18 +496,25 @@ export class MessagerieComponent implements OnInit {
     this.composeError.set('');
     this.isSending.set(true);
 
+    const formData = new FormData();
+    formData.append('recipientUserId', String(Number(this.composeRecipientId)));
+    formData.append('subject', this.composeSubject);
+    formData.append('content', this.composeContent);
+
+    const attachment = this.selectedAttachmentFile();
+    if (attachment) {
+      formData.append('attachment', attachment);
+    }
+
     this.http
-      .post(`${API_BASE_URL}/messagerie/messages`, {
-        recipientUserId: Number(this.composeRecipientId),
-        subject: this.composeSubject,
-        content: this.composeContent
-      })
+      .post(`${API_BASE_URL}/messagerie/messages`, formData)
       .subscribe({
         next: () => {
           this.isSending.set(false);
           this.composeRecipientId = 0;
           this.composeSubject = '';
           this.composeContent = '';
+          this.selectedAttachmentFile.set(null);
           this.activeTab.set('sent');
           this.loadSent();
           this.loadInbox();
@@ -474,6 +538,30 @@ export class MessagerieComponent implements OnInit {
       next: () => this.loadInbox(),
       error: () => undefined
     });
+  }
+
+  onAttachmentSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    this.selectedAttachmentFile.set(file);
+  }
+
+  downloadAttachment(messageId: number, attachment: MessageAttachment) {
+    this.http
+      .get(`${API_BASE_URL}/messagerie/messages/${messageId}/attachments/${attachment.id}/download`, {
+        responseType: 'blob'
+      })
+      .subscribe({
+        next: (blob) => {
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = attachment.fileName;
+          link.click();
+          window.URL.revokeObjectURL(url);
+        },
+        error: () => undefined
+      });
   }
 
   private loadRecipients() {
