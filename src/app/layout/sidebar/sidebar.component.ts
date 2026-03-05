@@ -212,7 +212,7 @@ export class SidebarComponent {
           title: 'BUREAU ASSISTANTE',
           items: [
             { label: 'Dashboard', route: '/dashboard', icon: '⌘' },
-            { label: 'À classer / Annoter', route: '/dashboard', icon: '◻' },
+            { label: 'À classer / Annoter', route: '/a-classer-annoter', icon: '◻' },
             { label: 'Rédiger un document', route: '/nouveau', icon: '▣' },
             { label: 'Envoyés au Chef', route: '/dashboard', icon: '✈' },
             { label: 'À traiter par Chef', route: '/dashboard', icon: '◷' }
