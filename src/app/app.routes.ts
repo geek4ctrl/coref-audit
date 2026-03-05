@@ -1,7 +1,6 @@
 import { Routes } from '@angular/router';
 import { DashboardLayoutComponent } from './layout/dashboard-layout.component';
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
-import { ReceptionComponent } from './pages/reception/reception.component';
 import { EnvoiComponent } from './pages/envoi/envoi.component';
 import { CategoriesComponent } from './pages/categories/categories.component';
 import { NouveauDocumentComponent } from './pages/nouveau-document/nouveau-document.component';
@@ -29,7 +28,7 @@ export const routes: Routes = [
       {
         path: 'dashboard',
         component: DashboardComponent,
-        data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF', 'AUDITEUR'] }
+        data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF', 'AUDITEUR'] },
       },
       {
         path: 'documents',
@@ -43,34 +42,41 @@ export const routes: Routes = [
             'PILIER',
             'PILIER_COORD',
             'SERVICE_INTERNE',
-            'AUDITEUR'
-          ]
-        }
+            'AUDITEUR',
+          ],
+        },
       },
       {
         path: 'reception',
-        component: ReceptionComponent,
-        data: { roles: ['ADMIN', 'RECEPTION'] }
+        loadComponent: () =>
+          import('./pages/reception/reception.component').then((m) => m.ReceptionComponent),
+        data: { roles: ['ADMIN', 'RECEPTION'] },
       },
       {
         path: 'distributions',
         component: DistributionsComponent,
-        data: { roles: ['ADMIN', 'RECEPTION'] }
+        data: { roles: ['ADMIN', 'RECEPTION'] },
       },
       {
         path: 'bordereaux',
         component: BordereauxComponent,
-        data: { roles: ['ADMIN', 'RECEPTION'] }
+        data: { roles: ['ADMIN', 'RECEPTION'] },
       },
       {
         path: 'enregistrer-courrier',
         component: EnregistrerCourrierComponent,
-        data: { roles: ['ADMIN', 'RECEPTION'] }
+        data: { roles: ['ADMIN', 'RECEPTION'] },
+      },
+      {
+        path: 'messagerie',
+        loadComponent: () =>
+          import('./pages/messagerie/messagerie.component').then((m) => m.MessagerieComponent),
+        data: { roles: ['ADMIN', 'RECEPTION'] },
       },
       {
         path: 'envoi',
         component: EnvoiComponent,
-        data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF', 'SECRETARIAT'] }
+        data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF', 'SECRETARIAT'] },
       },
       { path: 'categories', component: CategoriesComponent, data: { roles: ['ADMIN'] } },
       {
@@ -86,28 +92,28 @@ export const routes: Routes = [
             'PILIER',
             'PILIER_COORD',
             'SERVICE_INTERNE',
-            'AUDITEUR'
-          ]
-        }
+            'AUDITEUR',
+          ],
+        },
       },
       {
         path: 'nouveau',
         component: NouveauDocumentComponent,
-        data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF', 'SECRETARIAT'] }
+        data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF', 'SECRETARIAT'] },
       },
       { path: 'espace-reception', component: EspaceReceptionComponent, data: { roles: ['ADMIN'] } },
       { path: 'services', component: EspaceReceptionComponent, data: { roles: ['ADMIN'] } },
       {
         path: 'relances',
         component: RelancesComponent,
-        data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF'] }
+        data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF'] },
       },
       {
         path: 'retards',
         component: RetardsComponent,
-        data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF', 'AUDITEUR'] }
+        data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF', 'AUDITEUR'] },
       },
-      { path: 'utilisateurs', component: UtilisateursComponent, data: { roles: ['ADMIN'] } }
-    ]
-  }
+      { path: 'utilisateurs', component: UtilisateursComponent, data: { roles: ['ADMIN'] } },
+    ],
+  },
 ];

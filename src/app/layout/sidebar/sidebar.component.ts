@@ -221,7 +221,7 @@ export class SidebarComponent {
           title: '',
           items: [
             { label: 'Recherche', route: '/recherche', icon: '🔍' },
-            { label: 'Messagerie', route: '/reception', icon: '✉️' }
+            { label: 'Messagerie', route: '/messagerie', icon: '✉️' }
           ]
         }
       ];
