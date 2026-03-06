@@ -257,6 +257,52 @@ export class SidebarComponent {
       ];
     }
 
+    if (role === 'CHEF_SG') {
+      return [
+        {
+          title: 'CHEF / SG',
+          items: [
+            { label: 'Dashboard', route: '/dashboard', icon: '📊' },
+            { label: 'Documents', route: '/documents', icon: '📄', badge: 3 },
+            { label: 'Recherche', route: '/recherche', icon: '🔍' },
+            { label: 'Envoyer / Router', route: '/envoi', icon: '📤' },
+            { label: 'Relances', route: '/relances', icon: '🔔' },
+            { label: 'Retards', route: '/retards', icon: '⏱️' }
+          ]
+        },
+        {
+          title: '',
+          items: [
+            { label: 'Messagerie', route: '/messagerie', icon: '✉️' }
+          ]
+        }
+      ];
+    }
+
+    if (role === 'ADMIN') {
+      return [
+        {
+          title: 'CHEF / SG',
+          items: [
+            { label: 'Dashboard', route: '/dashboard', icon: '📊' },
+            { label: 'Documents', route: '/documents', icon: '📄', badge: 3 },
+            { label: 'Recherche', route: '/recherche', icon: '🔍' },
+            { label: 'Envoyer / Router', route: '/envoi', icon: '📤' },
+            { label: 'Relances', route: '/relances', icon: '🔔' },
+            { label: 'Retards', route: '/retards', icon: '⏱️' }
+          ]
+        },
+        {
+          title: 'ADMINISTRATION',
+          items: [
+            { label: 'Utilisateurs', route: '/utilisateurs', icon: '👥' },
+            { label: 'Rôles & Permissions', route: '/categories', icon: '🛡️' },
+            { label: 'Services & Piliers', route: '/services', icon: '🏛️' }
+          ]
+        }
+      ];
+    }
+
     return [
       {
         title: 'CHEF / SG',
