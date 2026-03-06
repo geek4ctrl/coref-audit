@@ -17,6 +17,8 @@ import { BordereauxComponent } from './pages/bordereaux/bordereaux.component';
 import { EnregistrerCourrierComponent } from './pages/enregistrer-courrier/enregistrer-courrier.component';
 import { MessagerieComponent } from './pages/messagerie';
 import { AClasserAnnoterComponent } from './pages/a-classer-annoter/a-classer-annoter.component';
+import { EnvoyesAuChefComponent } from './pages/envoyes-au-chef/envoyes-au-chef.component';
+import { ATraiterParChefComponent } from './pages/a-traiter-par-chef/a-traiter-par-chef.component';
 import { authChildGuard, authGuard } from './auth/auth.guard';
 
 export const routes: Routes = [
@@ -36,6 +38,16 @@ export const routes: Routes = [
       {
         path: 'a-classer-annoter',
         component: AClasserAnnoterComponent,
+        data: { roles: ['ADMIN', 'ASSISTANT_CHEF'] },
+      },
+      {
+        path: 'envoyes-au-chef',
+        component: EnvoyesAuChefComponent,
+        data: { roles: ['ADMIN', 'ASSISTANT_CHEF'] },
+      },
+      {
+        path: 'a-traiter-par-chef',
+        component: ATraiterParChefComponent,
         data: { roles: ['ADMIN', 'ASSISTANT_CHEF'] },
       },
       {

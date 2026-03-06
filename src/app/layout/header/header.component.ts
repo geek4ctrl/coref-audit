@@ -71,7 +71,7 @@ import { AuthService } from '../../auth/auth.service';
 
     .header-title h1 {
       margin: 0;
-      font-size: 16px;
+      font-size: 12px;
       font-weight: 700;
       color: #0f172a;
     }
@@ -97,7 +97,7 @@ import { AuthService } from '../../auth/auth.service';
       position: relative;
       background: #f8fafc;
       border: 1px solid #e5e7eb;
-      font-size: 16px;
+      font-size: 12px;
       cursor: pointer;
       padding: 8px 10px;
       border-radius: 12px;
@@ -215,7 +215,7 @@ import { AuthService } from '../../auth/auth.service';
       justify-content: center;
       font-weight: bold;
       color: #0b3a78;
-      font-size: 14px;
+      font-size: 12px;
       flex-shrink: 0;
     }
 
@@ -225,7 +225,7 @@ import { AuthService } from '../../auth/auth.service';
     }
 
     .dropdown-user-name {
-      font-size: 14px;
+      font-size: 12px;
       font-weight: 600;
       color: #1a1a1a;
       white-space: nowrap;
@@ -234,7 +234,7 @@ import { AuthService } from '../../auth/auth.service';
     }
 
     .dropdown-user-email {
-      font-size: 12px;
+      font-size: 11px;
       color: #666;
       white-space: nowrap;
       overflow: hidden;
@@ -257,7 +257,7 @@ import { AuthService } from '../../auth/auth.service';
       background: none;
       cursor: pointer;
       transition: background-color 0.2s;
-      font-size: 13px;
+      font-size: 11px;
       color: #0f172a;
       text-align: left;
     }
@@ -275,7 +275,7 @@ import { AuthService } from '../../auth/auth.service';
     }
 
     .dropdown-item-icon {
-      font-size: 16px;
+      font-size: 12px;
       width: 20px;
       display: flex;
       align-items: center;

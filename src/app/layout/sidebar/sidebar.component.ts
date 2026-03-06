@@ -70,7 +70,7 @@ interface NavSection {
     }
 
     .logo {
-      font-size: 30px;
+      font-size: 12px;
       font-weight: 800;
       line-height: 1;
       margin-bottom: 6px;
@@ -122,7 +122,7 @@ interface NavSection {
       padding: 10px 12px;
       color: white;
       text-decoration: none;
-      font-size: 16px;
+      font-size: 11px;
       font-weight: 500;
       transition: all 0.2s;
       position: relative;
@@ -144,7 +144,7 @@ interface NavSection {
     }
 
     .nav-icon {
-      font-size: 15px;
+      font-size: 12px;
       width: 24px;
       height: 24px;
       border-radius: 8px;
@@ -194,7 +194,7 @@ interface NavSection {
       }
 
       .nav-item {
-        font-size: 14px;
+        font-size: 11px;
         padding: 9px 10px;
       }
     }
@@ -214,8 +214,8 @@ export class SidebarComponent {
             { label: 'Dashboard', route: '/dashboard', icon: '⌘' },
             { label: 'À classer / Annoter', route: '/a-classer-annoter', icon: '◻' },
             { label: 'Rédiger un document', route: '/nouveau', icon: '▣' },
-            { label: 'Envoyés au Chef', route: '/dashboard', icon: '✈' },
-            { label: 'À traiter par Chef', route: '/dashboard', icon: '◷' }
+            { label: 'Envoyés au Chef', route: '/envoyes-au-chef', icon: '✈' },
+            { label: 'À traiter par Chef', route: '/a-traiter-par-chef', icon: '◷' }
           ]
         },
         {
