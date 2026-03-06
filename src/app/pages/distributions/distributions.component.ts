@@ -107,6 +107,11 @@ interface DistributionOverviewResponse {
     </div>
   `,
   styles: [`
+    .page,
+    .page * {
+      font-size: 11px !important;
+    }
+
     .page {
       max-width: 1280px;
       margin: 0 auto;
