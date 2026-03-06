@@ -138,9 +138,7 @@ interface DashboardDocument {
 
         <div class="status-cards-grid">
           @for (card of statusCards; track card.title) {
-            <div (click)="onStatusCardClick(card.title)">
-              <app-status-card [card]="card" />
-            </div>
+            <app-status-card [card]="card" />
           }
         </div>
 
@@ -149,13 +147,13 @@ interface DashboardDocument {
           <div class="filters-row">
             <div class="filter-chips">
               @for (filter of quickFilters; track filter.label) {
-                <button class="filter-chip" [class.active]="filter.active" (click)="onQuickFilterClick(filter.label)">
+                <button class="filter-chip" [class.active]="filter.active">
                   <span class="chip-label">{{ filter.label }}</span>
                   <span class="chip-count">{{ filter.count }}</span>
                 </button>
               }
             </div>
-            <button class="pill-action" (click)="openChefDocuments('pilier', true)">Par pilier</button>
+            <button class="pill-action">Par pilier</button>
           </div>
         </div>
 
@@ -205,9 +203,9 @@ interface DashboardDocument {
                     </td>
                     <td>
                       <div class="action-buttons">
-                        <button class="icon-btn" aria-label="Classer" (click)="classifyDocument(doc.id)" [disabled]="!isAssistantMode || isBusy(doc.id)">👁️</button>
-                        <button class="icon-btn" aria-label="Traiter" (click)="markTreated(doc.id)" [disabled]="!isAssistantMode || isBusy(doc.id)">⏱️</button>
-                        <button class="icon-btn" aria-label="Envoyer" (click)="sendToChief(doc.id)" [disabled]="!isAssistantMode || isBusy(doc.id)">📨</button>
+                        <button class="icon-btn" aria-label="Classer" (click)="classifyDocument(doc.id)" [disabled]="isBusy(doc.id)">👁️</button>
+                        <button class="icon-btn" aria-label="Traiter" (click)="isAssistantMode ? markTreated(doc.id) : quickCloseAsChief(doc.id)" [disabled]="isBusy(doc.id)">⏱️</button>
+                        <button class="icon-btn" aria-label="Envoyer" (click)="isAssistantMode ? sendToChief(doc.id) : quickSendToSecretariat(doc.id)" [disabled]="isBusy(doc.id)">📨</button>
                       </div>
                     </td>
                   </tr>
@@ -796,6 +794,7 @@ export class DashboardComponent implements OnInit {
   pageTitle = 'Dashboard Chef';
   pageSubtitle = "Centre de contrôle — Vue d'ensemble en 5 secondes";
   isAssistantMode = false;
+  isChefMode = false;
   isLoading = false;
   pendingDocumentIds = new Set<number>();
   assistantDisplayName = 'Assistante';
@@ -887,6 +886,7 @@ export class DashboardComponent implements OnInit {
   ngOnInit(): void {
     const role = this.authService.getRole();
     this.isAssistantMode = role === 'ASSISTANT_CHEF';
+    this.isChefMode = role === 'CHEF_SG';
     const isChefSgMode = role === 'CHEF_SG';
     this.assistantDisplayName = this.authService.user()?.name || 'Assistante';
     this.todayLabel = new Intl.DateTimeFormat('fr-FR', {
@@ -908,7 +908,12 @@ export class DashboardComponent implements OnInit {
   }
 
   classifyDocument(documentId: number): void {
-    if (!this.isAssistantMode || this.pendingDocumentIds.has(documentId)) {
+    if ((!this.isAssistantMode && !this.isChefMode) || this.pendingDocumentIds.has(documentId)) {
+      return;
+    }
+
+    if (this.isChefMode && !this.isAssistantMode) {
+      this.openChiefDecisionFlow(documentId);
       return;
     }
 
@@ -1171,6 +1176,104 @@ export class DashboardComponent implements OnInit {
       },
       error: () => {
         this.isLoading = false;
+      }
+    });
+  }
+
+  quickCloseAsChief(documentId: number): void {
+    if (!this.isChefMode || this.pendingDocumentIds.has(documentId)) {
+      return;
+    }
+    this.submitChiefDecision(documentId, { decision: 'CLOSE' });
+  }
+
+  quickSendToSecretariat(documentId: number): void {
+    if (!this.isChefMode || this.pendingDocumentIds.has(documentId)) {
+      return;
+    }
+    this.submitChiefDecision(documentId, { decision: 'SEND_SECRETARIAT' });
+  }
+
+  private openChiefDecisionFlow(documentId: number): void {
+    const decisionRaw = window.prompt(
+      [
+        'Décision Chef/SG:',
+        'A = ASSIGN_PILIER',
+        'B = ASSIGN_SERVICE',
+        'C = SEND_SECRETARIAT',
+        'D = CLOSE',
+        'E = BLOQUER'
+      ].join('\n'),
+      'A'
+    );
+
+    if (!decisionRaw) {
+      return;
+    }
+
+    const choice = decisionRaw.trim().toUpperCase();
+    if (!['A', 'B', 'C', 'D', 'E'].includes(choice)) {
+      return;
+    }
+
+    if (choice === 'C') {
+      this.submitChiefDecision(documentId, { decision: 'SEND_SECRETARIAT' });
+      return;
+    }
+
+    if (choice === 'D') {
+      this.submitChiefDecision(documentId, { decision: 'CLOSE' });
+      return;
+    }
+
+    if (choice === 'E') {
+      const instruction = window.prompt('Informations complémentaires requises (optionnel):', '') || '';
+      this.submitChiefDecision(documentId, { decision: 'BLOQUER', instruction });
+      return;
+    }
+
+    const decision = choice === 'A' ? 'ASSIGN_PILIER' : 'ASSIGN_SERVICE';
+    const assignedToValue = window.prompt(
+      choice === 'A' ? 'Sélectionner Pilier (nom ou code):' : 'Sélectionner Service (nom ou code):',
+      ''
+    );
+
+    if (!assignedToValue || !assignedToValue.trim()) {
+      return;
+    }
+
+    const priority = (window.prompt('Définir priorité (Basse, Normale, Haute, Urgente):', 'Normale') || '').trim();
+    const slaInput = (window.prompt('Fixer délai (SLA) en jours:', '7') || '').trim();
+    const instruction = (window.prompt('Ajouter instructions (optionnel):', '') || '').trim();
+
+    const slaDays = Number.parseInt(slaInput, 10);
+    this.submitChiefDecision(documentId, {
+      decision,
+      assignedToValue: assignedToValue.trim(),
+      priority: priority || undefined,
+      slaDays: Number.isFinite(slaDays) ? slaDays : undefined,
+      instruction: instruction || undefined
+    });
+  }
+
+  private submitChiefDecision(
+    documentId: number,
+    payload: {
+      decision: 'ASSIGN_PILIER' | 'ASSIGN_SERVICE' | 'SEND_SECRETARIAT' | 'CLOSE' | 'BLOQUER';
+      assignedToValue?: string;
+      priority?: string;
+      slaDays?: number;
+      instruction?: string;
+    }
+  ): void {
+    this.pendingDocumentIds.add(documentId);
+    this.http.patch(`${API_BASE_URL}/chief/documents/${documentId}/decision`, payload).subscribe({
+      next: () => {
+        this.pendingDocumentIds.delete(documentId);
+        this.loadAssistantDashboard();
+      },
+      error: () => {
+        this.pendingDocumentIds.delete(documentId);
       }
     });
   }
