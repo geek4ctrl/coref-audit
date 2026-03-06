@@ -1214,12 +1214,12 @@ export class DashboardComponent implements OnInit {
   private openChiefDecisionFlow(documentId: number): void {
     const decisionRaw = window.prompt(
       [
-        'Décision Chef/SG:',
-        'A = ASSIGN_PILIER',
-        'B = ASSIGN_SERVICE',
-        'C = SEND_SECRETARIAT',
-        'D = CLOSE',
-        'E = BLOQUER'
+        'CHEF / SG — Décision:',
+        'A = Assignation au CHEF DE PILIER',
+        'B = Assignation à un SERVICE',
+        'C = Envoyer au SECRÉTARIAT',
+        'D = Clôturer directement',
+        'E = Bloquer (infos complémentaires)'
       ].join('\n'),
       'A'
     );
@@ -1251,7 +1251,7 @@ export class DashboardComponent implements OnInit {
 
     const decision = choice === 'A' ? 'ASSIGN_PILIER' : 'ASSIGN_SERVICE';
     const assignedToValue = window.prompt(
-      choice === 'A' ? 'Sélectionner Pilier (nom ou code):' : 'Sélectionner Service (nom ou code):',
+      choice === 'A' ? 'Sélectionner Chef de Pilier (nom ou code):' : 'Sélectionner Service (nom ou code):',
       ''
     );
 
@@ -1288,6 +1288,19 @@ export class DashboardComponent implements OnInit {
       next: () => {
         this.pendingDocumentIds.delete(documentId);
         this.loadAssistantDashboard();
+
+        if (payload.decision === 'ASSIGN_PILIER') {
+          window.alert(
+            [
+              'CHEF / SG',
+              '',
+              'Action: Assignation au CHEF DE PILIER',
+              '- Définit priorité et délai',
+              '- Ajoute instructions détaillées',
+              '- Notification envoyée'
+            ].join('\n')
+          );
+        }
       },
       error: () => {
         this.pendingDocumentIds.delete(documentId);
