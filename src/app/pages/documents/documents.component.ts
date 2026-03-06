@@ -1,6 +1,6 @@
 import { Component, ChangeDetectionStrategy, signal, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 interface Document {
   number: string;
@@ -23,7 +23,7 @@ interface Document {
       <div class="page-header">
         <div class="header-title">
           <h2 class="page-title">Bibliothèque de Documents</h2>
-          <p class="page-subtitle">{{ documents().length }} documents</p>
+          <p class="page-subtitle">{{ subtitleText() }}</p>
         </div>
         <div class="header-actions">
           <button class="btn-filters" (click)="toggleFilters()">
@@ -479,7 +479,9 @@ interface Document {
 })
 export class DocumentsComponent {
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   showFilters = signal(true);
+  currentScopeLabel = signal<string | null>(null);
 
   documents = signal<Document[]>([
     {
@@ -532,11 +534,54 @@ export class DocumentsComponent {
     this.showFilters.update(value => !value);
   }
 
+  constructor() {
+    this.route.queryParamMap.subscribe((params) => {
+      const scope = params.get('scope');
+      const showFiltersParam = params.get('showFilters');
+
+      if (showFiltersParam === '1') {
+        this.showFilters.set(true);
+      }
+
+      this.currentScopeLabel.set(this.mapScope(scope));
+    });
+  }
+
+  subtitleText(): string {
+    const scopeLabel = this.currentScopeLabel();
+    if (!scopeLabel) {
+      return `${this.documents().length} documents`;
+    }
+    return `${this.documents().length} documents · ${scopeLabel}`;
+  }
+
   onFilterChange(): void {
     // Handle filter changes
   }
 
   selectDocument(doc: Document): void {
     this.router.navigate(['/documents'], { queryParams: { docId: doc.number } });
+  }
+
+  private mapScope(scope: string | null): string | null {
+    const scopeLabels: Record<string, string> = {
+      'all': 'Tous',
+      'to-process': 'À traiter',
+      'in-progress': 'En cours',
+      'done': 'Terminés',
+      'assigned-to-me': 'Destinés à moi',
+      'sent-by-me': 'Envoyés par moi',
+      'no-ack': 'Sans accusé réception',
+      'delayed': 'En retard',
+      'blocked': 'Bloqués',
+      'treated-this-week': 'Traités cette semaine',
+      'pilier': 'Par pilier'
+    };
+
+    if (!scope) {
+      return null;
+    }
+
+    return scopeLabels[scope] ?? null;
   }
 }

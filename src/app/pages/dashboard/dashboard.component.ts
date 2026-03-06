@@ -207,9 +207,9 @@ interface DashboardDocument {
                     </td>
                     <td>
                       <div class="action-buttons">
-                        <button class="icon-btn" aria-label="Classer" (click)="classifyDocument(doc.id)" [disabled]="!isAssistantMode || isBusy(doc.id)">👁️</button>
-                        <button class="icon-btn" aria-label="Traiter" (click)="markTreated(doc.id)" [disabled]="!isAssistantMode || isBusy(doc.id)">⏱️</button>
-                        <button class="icon-btn" aria-label="Envoyer" (click)="sendToChief(doc.id)" [disabled]="!isAssistantMode || isBusy(doc.id)">📨</button>
+                        <button class="icon-btn" aria-label="Classer" (click)="classifyDocument(doc.id)" [disabled]="isBusy(doc.id)">👁️</button>
+                        <button class="icon-btn" aria-label="Traiter" (click)="isAssistantMode ? markTreated(doc.id) : quickCloseAsChief(doc.id)" [disabled]="isBusy(doc.id)">⏱️</button>
+                        <button class="icon-btn" aria-label="Envoyer" (click)="isAssistantMode ? sendToChief(doc.id) : quickSendToSecretariat(doc.id)" [disabled]="isBusy(doc.id)">📨</button>
                       </div>
                     </td>
                   </tr>
@@ -807,6 +807,7 @@ export class DashboardComponent implements OnInit {
   pageTitle = 'Dashboard Chef';
   pageSubtitle = "Centre de contrôle — Vue d'ensemble en 5 secondes";
   isAssistantMode = false;
+  isChefMode = false;
   isLoading = false;
   pendingDocumentIds = new Set<number>();
   assistantDisplayName = 'Assistante';
@@ -814,45 +815,40 @@ export class DashboardComponent implements OnInit {
 
   statusCards: StatusCard[] = [
     {
-      title: 'À recevoir',
+      title: 'À traiter',
       count: 0,
-      description: 'Documents en réception',
+      description: 'Documents non traités',
       color: '#1d4ed8',
       icon: '📄'
     },
     {
-      title: 'À traiter',
+      title: 'Destinés à moi',
       count: 0,
-      description: 'Nécessitent votre action',
+      description: 'En attente de ma décision',
       color: '#0b3a78',
       emphasis: true,
-      icon: '📝'
+      icon: '👜'
     },
     {
-      title: 'En cours',
+      title: 'En retard',
       count: 0,
-      description: 'Documents en traitement',
-      color: '#d97706',
-      icon: '🔄'
+      description: 'Délai dépassé',
+      color: '#ef4444',
+      icon: '⏰'
     },
     {
-      title: 'Terminés',
+      title: 'Bloqués',
       count: 0,
-      description: 'Documents archivés',
-      color: '#dc2626',
-      icon: '🗂️'
+      description: 'Nécessitent attention',
+      color: '#f97316',
+      icon: '⚠️'
     }
   ];
 
   quickFilters = [
-    { label: 'Tous', count: 15, active: true },
-    { label: 'À traiter', count: 14 },
+    { label: 'Tous', count: 0, active: true },
     { label: 'Destinés à moi', count: 0 },
-    { label: 'Envoyés par moi', count: 2 },
-    { label: 'Sans accusé réception', count: 4 },
-    { label: 'En retard', count: 10 },
-    { label: 'Bloqués', count: 1 },
-    { label: 'Traités cette semaine', count: 0 }
+    { label: 'En retard', count: 0 }
   ];
 
   documents: DashboardDocument[] = [
@@ -901,7 +897,10 @@ export class DashboardComponent implements OnInit {
   ];
 
   ngOnInit(): void {
-    this.isAssistantMode = this.authService.getRole() === 'ASSISTANT_CHEF';
+    const role = this.authService.getRole();
+    this.isAssistantMode = role === 'ASSISTANT_CHEF';
+    this.isChefMode = role === 'CHEF_SG';
+    const isChefSgMode = role === 'CHEF_SG';
     this.assistantDisplayName = this.authService.user()?.name || 'Assistante';
     this.todayLabel = new Intl.DateTimeFormat('fr-FR', {
       weekday: 'long',
@@ -909,17 +908,25 @@ export class DashboardComponent implements OnInit {
       month: 'long',
       year: 'numeric'
     }).format(new Date());
-    if (!this.isAssistantMode) {
+    if (!this.isAssistantMode && !isChefSgMode) {
       return;
     }
 
-    this.pageTitle = 'Dashboard Assistant';
-    this.pageSubtitle = 'Suivi opérationnel des courriers à classer et transmettre';
+    if (this.isAssistantMode) {
+      this.pageTitle = 'Dashboard Assistant';
+      this.pageSubtitle = 'Suivi opérationnel des courriers à classer et transmettre';
+    }
+
     this.loadAssistantDashboard();
   }
 
   classifyDocument(documentId: number): void {
-    if (!this.isAssistantMode || this.pendingDocumentIds.has(documentId)) {
+    if ((!this.isAssistantMode && !this.isChefMode) || this.pendingDocumentIds.has(documentId)) {
+      return;
+    }
+
+    if (this.isChefMode && !this.isAssistantMode) {
+      this.openChiefDecisionFlow(documentId);
       return;
     }
 
@@ -1034,6 +1041,58 @@ export class DashboardComponent implements OnInit {
     this.router.navigate(['/recherche']);
   }
 
+  onStatusCardClick(title: string): void {
+    if (this.isAssistantMode) {
+      return;
+    }
+
+    const scopeByTitle: Record<string, string> = {
+      'À traiter': 'to-process',
+      'Destinés à moi': 'assigned-to-me',
+      'En retard': 'delayed',
+      'Bloqués': 'blocked'
+    };
+
+    this.openChefDocuments(scopeByTitle[title] || 'all');
+  }
+
+  onQuickFilterClick(label: string): void {
+    if (this.isAssistantMode) {
+      return;
+    }
+
+    this.quickFilters = this.quickFilters.map((item) => ({
+      ...item,
+      active: item.label === label
+    }));
+
+    const scopeByLabel: Record<string, string> = {
+      'Tous': 'all',
+      'À traiter': 'to-process',
+      'Destinés à moi': 'assigned-to-me',
+      'Envoyés par moi': 'sent-by-me',
+      'Sans accusé réception': 'no-ack',
+      'En retard': 'delayed',
+      'Bloqués': 'blocked',
+      'Traités cette semaine': 'treated-this-week'
+    };
+
+    this.openChefDocuments(scopeByLabel[label] || 'all', true);
+  }
+
+  openChefDocuments(scope: string = 'all', showFilters: boolean = false): void {
+    if (this.isAssistantMode) {
+      return;
+    }
+
+    this.router.navigate(['/documents'], {
+      queryParams: {
+        scope,
+        showFilters: showFilters ? '1' : '0'
+      }
+    });
+  }
+
   navigateTo(route: string): void {
     this.router.navigate([route]);
   }
@@ -1042,48 +1101,88 @@ export class DashboardComponent implements OnInit {
     this.isLoading = true;
     this.http.get<AssistantDashboardResponse>(`${API_BASE_URL}/assistant/dashboard`).subscribe({
       next: (response) => {
-        this.statusCards = [
-          {
-            title: 'À recevoir',
-            count: response.cards.toReceive,
-            description: 'Documents en réception',
-            color: '#1d4ed8',
-            icon: '📄'
-          },
-          {
-            title: 'À traiter',
-            count: response.cards.toProcess,
-            description: 'Nécessitent votre action',
-            color: '#0b3a78',
-            emphasis: true,
-            icon: '📝'
-          },
-          {
-            title: 'En cours',
-            count: response.cards.inProgress,
-            description: 'Documents en traitement',
-            color: '#d97706',
-            icon: '🔄'
-          },
-          {
-            title: 'Terminés',
-            count: response.cards.done,
-            description: 'Documents archivés',
-            color: '#dc2626',
-            icon: '🗂️'
-          }
-        ];
+        if (this.isAssistantMode) {
+          this.statusCards = [
+            {
+              title: 'À recevoir',
+              count: response.cards.toReceive,
+              description: 'Documents en réception',
+              color: '#1d4ed8',
+              icon: '📄'
+            },
+            {
+              title: 'À traiter',
+              count: response.cards.toProcess,
+              description: 'Nécessitent votre action',
+              color: '#0b3a78',
+              emphasis: true,
+              icon: '📝'
+            },
+            {
+              title: 'En cours',
+              count: response.cards.inProgress,
+              description: 'Documents en traitement',
+              color: '#d97706',
+              icon: '🔄'
+            },
+            {
+              title: 'Terminés',
+              count: response.cards.done,
+              description: 'Documents archivés',
+              color: '#dc2626',
+              icon: '🗂️'
+            }
+          ];
 
-        this.quickFilters = [
-          { label: 'Tous', count: response.quickFilters.all, active: true },
-          { label: 'À traiter', count: response.quickFilters.toProcess },
-          { label: 'Destinés à moi', count: response.quickFilters.assignedToMe },
-          { label: 'Envoyés par moi', count: response.quickFilters.sentByMe },
-          { label: 'Sans accusé réception', count: response.quickFilters.noAck },
-          { label: 'En retard', count: response.quickFilters.delayed },
-          { label: 'Bloqués', count: response.quickFilters.blocked },
-          { label: 'Traités cette semaine', count: response.quickFilters.treatedThisWeek }
-        ];
+          this.quickFilters = [
+            { label: 'Tous', count: response.quickFilters.all, active: true },
+            { label: 'À traiter', count: response.quickFilters.toProcess },
+            { label: 'Destinés à moi', count: response.quickFilters.assignedToMe },
+            { label: 'Envoyés par moi', count: response.quickFilters.sentByMe },
+            { label: 'Sans accusé réception', count: response.quickFilters.noAck },
+            { label: 'En retard', count: response.quickFilters.delayed },
+            { label: 'Bloqués', count: response.quickFilters.blocked },
+            { label: 'Traités cette semaine', count: response.quickFilters.treatedThisWeek }
+          ];
+        } else {
+          this.statusCards = [
+            {
+              title: 'À traiter',
+              count: response.quickFilters.toProcess,
+              description: 'Documents non traités',
+              color: '#1d4ed8',
+              icon: '📄'
+            },
+            {
+              title: 'Destinés à moi',
+              count: response.quickFilters.assignedToMe,
+              description: 'En attente de ma décision',
+              color: '#0b3a78',
+              emphasis: true,
+              icon: '👜'
+            },
+            {
+              title: 'En retard',
+              count: response.quickFilters.delayed,
+              description: 'Délai dépassé',
+              color: '#ef4444',
+              icon: '⏰'
+            },
+            {
+              title: 'Bloqués',
+              count: response.quickFilters.blocked,
+              description: 'Nécessitent attention',
+              color: '#f97316',
+              icon: '⚠️'
+            }
+          ];
+
+          this.quickFilters = [
+            { label: 'Tous', count: response.quickFilters.all, active: true },
+            { label: 'Destinés à moi', count: response.quickFilters.assignedToMe },
+            { label: 'En retard', count: response.quickFilters.delayed }
+          ];
+        }
 
         this.documents = response.documents.map((document) => ({
           ...document,
@@ -1094,6 +1193,104 @@ export class DashboardComponent implements OnInit {
       },
       error: () => {
         this.isLoading = false;
+      }
+    });
+  }
+
+  quickCloseAsChief(documentId: number): void {
+    if (!this.isChefMode || this.pendingDocumentIds.has(documentId)) {
+      return;
+    }
+    this.submitChiefDecision(documentId, { decision: 'CLOSE' });
+  }
+
+  quickSendToSecretariat(documentId: number): void {
+    if (!this.isChefMode || this.pendingDocumentIds.has(documentId)) {
+      return;
+    }
+    this.submitChiefDecision(documentId, { decision: 'SEND_SECRETARIAT' });
+  }
+
+  private openChiefDecisionFlow(documentId: number): void {
+    const decisionRaw = window.prompt(
+      [
+        'Décision Chef/SG:',
+        'A = ASSIGN_PILIER',
+        'B = ASSIGN_SERVICE',
+        'C = SEND_SECRETARIAT',
+        'D = CLOSE',
+        'E = BLOQUER'
+      ].join('\n'),
+      'A'
+    );
+
+    if (!decisionRaw) {
+      return;
+    }
+
+    const choice = decisionRaw.trim().toUpperCase();
+    if (!['A', 'B', 'C', 'D', 'E'].includes(choice)) {
+      return;
+    }
+
+    if (choice === 'C') {
+      this.submitChiefDecision(documentId, { decision: 'SEND_SECRETARIAT' });
+      return;
+    }
+
+    if (choice === 'D') {
+      this.submitChiefDecision(documentId, { decision: 'CLOSE' });
+      return;
+    }
+
+    if (choice === 'E') {
+      const instruction = window.prompt('Informations complémentaires requises (optionnel):', '') || '';
+      this.submitChiefDecision(documentId, { decision: 'BLOQUER', instruction });
+      return;
+    }
+
+    const decision = choice === 'A' ? 'ASSIGN_PILIER' : 'ASSIGN_SERVICE';
+    const assignedToValue = window.prompt(
+      choice === 'A' ? 'Sélectionner Pilier (nom ou code):' : 'Sélectionner Service (nom ou code):',
+      ''
+    );
+
+    if (!assignedToValue || !assignedToValue.trim()) {
+      return;
+    }
+
+    const priority = (window.prompt('Définir priorité (Basse, Normale, Haute, Urgente):', 'Normale') || '').trim();
+    const slaInput = (window.prompt('Fixer délai (SLA) en jours:', '7') || '').trim();
+    const instruction = (window.prompt('Ajouter instructions (optionnel):', '') || '').trim();
+
+    const slaDays = Number.parseInt(slaInput, 10);
+    this.submitChiefDecision(documentId, {
+      decision,
+      assignedToValue: assignedToValue.trim(),
+      priority: priority || undefined,
+      slaDays: Number.isFinite(slaDays) ? slaDays : undefined,
+      instruction: instruction || undefined
+    });
+  }
+
+  private submitChiefDecision(
+    documentId: number,
+    payload: {
+      decision: 'ASSIGN_PILIER' | 'ASSIGN_SERVICE' | 'SEND_SECRETARIAT' | 'CLOSE' | 'BLOQUER';
+      assignedToValue?: string;
+      priority?: string;
+      slaDays?: number;
+      instruction?: string;
+    }
+  ): void {
+    this.pendingDocumentIds.add(documentId);
+    this.http.patch(`${API_BASE_URL}/chief/documents/${documentId}/decision`, payload).subscribe({
+      next: () => {
+        this.pendingDocumentIds.delete(documentId);
+        this.loadAssistantDashboard();
+      },
+      error: () => {
+        this.pendingDocumentIds.delete(documentId);
       }
     });
   }
