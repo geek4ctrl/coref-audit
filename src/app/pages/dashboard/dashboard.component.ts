@@ -138,7 +138,9 @@ interface DashboardDocument {
 
         <div class="status-cards-grid">
           @for (card of statusCards; track card.title) {
-            <app-status-card [card]="card" />
+            <div (click)="onStatusCardClick(card.title)">
+              <app-status-card [card]="card" />
+            </div>
           }
         </div>
 
@@ -147,13 +149,13 @@ interface DashboardDocument {
           <div class="filters-row">
             <div class="filter-chips">
               @for (filter of quickFilters; track filter.label) {
-                <button class="filter-chip" [class.active]="filter.active">
+                <button class="filter-chip" [class.active]="filter.active" (click)="onQuickFilterClick(filter.label)">
                   <span class="chip-label">{{ filter.label }}</span>
                   <span class="chip-count">{{ filter.count }}</span>
                 </button>
               }
             </div>
-            <button class="pill-action">Par pilier</button>
+            <button class="pill-action" (click)="openChefDocuments('pilier', true)">Par pilier</button>
           </div>
         </div>
 
@@ -801,45 +803,40 @@ export class DashboardComponent implements OnInit {
 
   statusCards: StatusCard[] = [
     {
-      title: 'À recevoir',
+      title: 'À traiter',
       count: 0,
-      description: 'Documents en réception',
+      description: 'Documents non traités',
       color: '#1d4ed8',
       icon: '📄'
     },
     {
-      title: 'À traiter',
+      title: 'Destinés à moi',
       count: 0,
-      description: 'Nécessitent votre action',
+      description: 'En attente de ma décision',
       color: '#0b3a78',
       emphasis: true,
-      icon: '📝'
+      icon: '👜'
     },
     {
-      title: 'En cours',
+      title: 'En retard',
       count: 0,
-      description: 'Documents en traitement',
-      color: '#d97706',
-      icon: '🔄'
+      description: 'Délai dépassé',
+      color: '#ef4444',
+      icon: '⏰'
     },
     {
-      title: 'Terminés',
+      title: 'Bloqués',
       count: 0,
-      description: 'Documents archivés',
-      color: '#dc2626',
-      icon: '🗂️'
+      description: 'Nécessitent attention',
+      color: '#f97316',
+      icon: '⚠️'
     }
   ];
 
   quickFilters = [
-    { label: 'Tous', count: 15, active: true },
-    { label: 'À traiter', count: 14 },
+    { label: 'Tous', count: 0, active: true },
     { label: 'Destinés à moi', count: 0 },
-    { label: 'Envoyés par moi', count: 2 },
-    { label: 'Sans accusé réception', count: 4 },
-    { label: 'En retard', count: 10 },
-    { label: 'Bloqués', count: 1 },
-    { label: 'Traités cette semaine', count: 0 }
+    { label: 'En retard', count: 0 }
   ];
 
   documents: DashboardDocument[] = [
@@ -1026,52 +1023,144 @@ export class DashboardComponent implements OnInit {
     this.router.navigate(['/recherche']);
   }
 
+  onStatusCardClick(title: string): void {
+    if (this.isAssistantMode) {
+      return;
+    }
+
+    const scopeByTitle: Record<string, string> = {
+      'À traiter': 'to-process',
+      'Destinés à moi': 'assigned-to-me',
+      'En retard': 'delayed',
+      'Bloqués': 'blocked'
+    };
+
+    this.openChefDocuments(scopeByTitle[title] || 'all');
+  }
+
+  onQuickFilterClick(label: string): void {
+    if (this.isAssistantMode) {
+      return;
+    }
+
+    this.quickFilters = this.quickFilters.map((item) => ({
+      ...item,
+      active: item.label === label
+    }));
+
+    const scopeByLabel: Record<string, string> = {
+      'Tous': 'all',
+      'À traiter': 'to-process',
+      'Destinés à moi': 'assigned-to-me',
+      'Envoyés par moi': 'sent-by-me',
+      'Sans accusé réception': 'no-ack',
+      'En retard': 'delayed',
+      'Bloqués': 'blocked',
+      'Traités cette semaine': 'treated-this-week'
+    };
+
+    this.openChefDocuments(scopeByLabel[label] || 'all', true);
+  }
+
+  openChefDocuments(scope: string = 'all', showFilters: boolean = false): void {
+    if (this.isAssistantMode) {
+      return;
+    }
+
+    this.router.navigate(['/documents'], {
+      queryParams: {
+        scope,
+        showFilters: showFilters ? '1' : '0'
+      }
+    });
+  }
+
   private loadAssistantDashboard(): void {
     this.isLoading = true;
     this.http.get<AssistantDashboardResponse>(`${API_BASE_URL}/assistant/dashboard`).subscribe({
       next: (response) => {
-        this.statusCards = [
-          {
-            title: 'À recevoir',
-            count: response.cards.toReceive,
-            description: 'Documents en réception',
-            color: '#1d4ed8',
-            icon: '📄'
-          },
-          {
-            title: 'À traiter',
-            count: response.cards.toProcess,
-            description: 'Nécessitent votre action',
-            color: '#0b3a78',
-            emphasis: true,
-            icon: '📝'
-          },
-          {
-            title: 'En cours',
-            count: response.cards.inProgress,
-            description: 'Documents en traitement',
-            color: '#d97706',
-            icon: '🔄'
-          },
-          {
-            title: 'Terminés',
-            count: response.cards.done,
-            description: 'Documents archivés',
-            color: '#dc2626',
-            icon: '🗂️'
-          }
-        ];
+        if (this.isAssistantMode) {
+          this.statusCards = [
+            {
+              title: 'À recevoir',
+              count: response.cards.toReceive,
+              description: 'Documents en réception',
+              color: '#1d4ed8',
+              icon: '📄'
+            },
+            {
+              title: 'À traiter',
+              count: response.cards.toProcess,
+              description: 'Nécessitent votre action',
+              color: '#0b3a78',
+              emphasis: true,
+              icon: '📝'
+            },
+            {
+              title: 'En cours',
+              count: response.cards.inProgress,
+              description: 'Documents en traitement',
+              color: '#d97706',
+              icon: '🔄'
+            },
+            {
+              title: 'Terminés',
+              count: response.cards.done,
+              description: 'Documents archivés',
+              color: '#dc2626',
+              icon: '🗂️'
+            }
+          ];
 
-        this.quickFilters = [
-          { label: 'Tous', count: response.quickFilters.all, active: true },
-          { label: 'À traiter', count: response.quickFilters.toProcess },
-          { label: 'Destinés à moi', count: response.quickFilters.assignedToMe },
-          { label: 'Envoyés par moi', count: response.quickFilters.sentByMe },
-          { label: 'Sans accusé réception', count: response.quickFilters.noAck },
-          { label: 'En retard', count: response.quickFilters.delayed },
-          { label: 'Bloqués', count: response.quickFilters.blocked },
-          { label: 'Traités cette semaine', count: response.quickFilters.treatedThisWeek }
-        ];
+          this.quickFilters = [
+            { label: 'Tous', count: response.quickFilters.all, active: true },
+            { label: 'À traiter', count: response.quickFilters.toProcess },
+            { label: 'Destinés à moi', count: response.quickFilters.assignedToMe },
+            { label: 'Envoyés par moi', count: response.quickFilters.sentByMe },
+            { label: 'Sans accusé réception', count: response.quickFilters.noAck },
+            { label: 'En retard', count: response.quickFilters.delayed },
+            { label: 'Bloqués', count: response.quickFilters.blocked },
+            { label: 'Traités cette semaine', count: response.quickFilters.treatedThisWeek }
+          ];
+        } else {
+          this.statusCards = [
+            {
+              title: 'À traiter',
+              count: response.quickFilters.toProcess,
+              description: 'Documents non traités',
+              color: '#1d4ed8',
+              icon: '📄'
+            },
+            {
+              title: 'Destinés à moi',
+              count: response.quickFilters.assignedToMe,
+              description: 'En attente de ma décision',
+              color: '#0b3a78',
+              emphasis: true,
+              icon: '👜'
+            },
+            {
+              title: 'En retard',
+              count: response.quickFilters.delayed,
+              description: 'Délai dépassé',
+              color: '#ef4444',
+              icon: '⏰'
+            },
+            {
+              title: 'Bloqués',
+              count: response.quickFilters.blocked,
+              description: 'Nécessitent attention',
+              color: '#f97316',
+              icon: '⚠️'
+            }
+          ];
+
+          this.quickFilters = [
+            { label: 'Tous', count: response.quickFilters.all, active: true },
+            { label: 'Destinés à moi', count: response.quickFilters.assignedToMe },
+            { label: 'En retard', count: response.quickFilters.delayed }
+          ];
+        }
 
         this.documents = response.documents.map((document) => ({
           ...document,
