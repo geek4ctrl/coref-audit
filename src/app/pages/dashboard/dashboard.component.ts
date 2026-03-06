@@ -71,7 +71,11 @@ interface DashboardDocument {
 
         <div class="assistant-kpi-grid">
           @for (card of assistantCards; track card.title) {
-            <div class="assistant-kpi-card">
+            <div
+              class="assistant-kpi-card"
+              [class.assistant-kpi-card-clickable]="!!card.route"
+              (click)="card.route ? navigateTo(card.route) : null"
+            >
               <div class="assistant-kpi-top">
                 <div class="assistant-kpi-title">{{ card.title }}</div>
                 <div [class]="'assistant-kpi-icon ' + card.iconTone">{{ card.icon }}</div>
@@ -281,6 +285,15 @@ interface DashboardDocument {
     .assistant-kpi-card {
       background: #fff;
       border: 1px solid #e2e8f0;
+
+    .assistant-kpi-card-clickable {
+      cursor: pointer;
+    }
+
+    .assistant-kpi-card-clickable:hover {
+      border-color: #bfdbfe;
+      box-shadow: 0 10px 22px rgba(37, 99, 235, 0.12);
+    }
       border-radius: 14px;
       padding: 18px 20px;
       box-shadow: 0 6px 16px rgba(15, 23, 42, 0.07);
@@ -968,35 +981,39 @@ export class DashboardComponent implements OnInit {
     return this.pendingDocumentIds.has(documentId);
   }
 
-  get assistantCards(): Array<{ title: string; count: number; note: string; icon: string; iconTone: string }> {
+  get assistantCards(): Array<{ title: string; count: number; note: string; icon: string; iconTone: string; route?: string }> {
     return [
       {
         title: 'À classer / Annoter',
         count: this.quickFilters.find((item) => item.label === 'À traiter')?.count ?? 0,
         note: 'Documents reçus en attente',
         icon: '◻',
-        iconTone: 'blue'
+        iconTone: 'blue',
+        route: '/a-classer-annoter'
       },
       {
         title: 'Envoyés au Chef',
         count: this.quickFilters.find((item) => item.label === 'Envoyés par moi')?.count ?? 0,
         note: 'Documents transférés',
         icon: '✈',
-        iconTone: 'green'
+        iconTone: 'green',
+        route: '/envoyes-au-chef'
       },
       {
         title: 'À traiter par Chef',
         count: this.quickFilters.find((item) => item.label === 'Sans accusé réception')?.count ?? 0,
         note: 'Documents non traités',
         icon: '◷',
-        iconTone: 'orange'
+        iconTone: 'orange',
+        route: '/a-traiter-par-chef'
       },
       {
         title: 'Documents urgents',
         count: this.quickFilters.find((item) => item.label === 'En retard')?.count ?? 0,
         note: 'Nécessitent une action rapide',
         icon: '!',
-        iconTone: 'red'
+        iconTone: 'red',
+        route: '/a-traiter-par-chef'
       }
     ];
   }
@@ -1006,11 +1023,7 @@ export class DashboardComponent implements OnInit {
   }
 
   openFirstDocumentForClassification(): void {
-    const firstDocument = this.recentAssistantDocuments[0];
-    if (!firstDocument) {
-      return;
-    }
-    this.classifyDocument(firstDocument.id);
+    this.router.navigate(['/a-classer-annoter']);
   }
 
   goToSentView(): void {
@@ -1019,6 +1032,10 @@ export class DashboardComponent implements OnInit {
 
   goToSearch(): void {
     this.router.navigate(['/recherche']);
+  }
+
+  navigateTo(route: string): void {
+    this.router.navigate([route]);
   }
 
   private loadAssistantDashboard(): void {
