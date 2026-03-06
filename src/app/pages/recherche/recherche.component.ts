@@ -95,6 +95,11 @@ interface SearchApiResponse {
     </div>
   `,
   styles: [`
+    .page,
+    .page * {
+      font-size: 12px !important;
+    }
+
     .page {
       max-width: 1200px;
       margin: 0 auto;
