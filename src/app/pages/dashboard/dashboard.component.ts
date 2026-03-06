@@ -888,7 +888,9 @@ export class DashboardComponent implements OnInit {
   ];
 
   ngOnInit(): void {
-    this.isAssistantMode = this.authService.getRole() === 'ASSISTANT_CHEF';
+    const role = this.authService.getRole();
+    this.isAssistantMode = role === 'ASSISTANT_CHEF';
+    const isChefSgMode = role === 'CHEF_SG';
     this.assistantDisplayName = this.authService.user()?.name || 'Assistante';
     this.todayLabel = new Intl.DateTimeFormat('fr-FR', {
       weekday: 'long',
@@ -896,12 +898,15 @@ export class DashboardComponent implements OnInit {
       month: 'long',
       year: 'numeric'
     }).format(new Date());
-    if (!this.isAssistantMode) {
+    if (!this.isAssistantMode && !isChefSgMode) {
       return;
     }
 
-    this.pageTitle = 'Dashboard Assistant';
-    this.pageSubtitle = 'Suivi opérationnel des courriers à classer et transmettre';
+    if (this.isAssistantMode) {
+      this.pageTitle = 'Dashboard Assistant';
+      this.pageSubtitle = 'Suivi opérationnel des courriers à classer et transmettre';
+    }
+
     this.loadAssistantDashboard();
   }
 
