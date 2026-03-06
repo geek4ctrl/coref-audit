@@ -1,5 +1,5 @@
 import { Component, computed, inject } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService, UserRole } from '../../auth/auth.service';
 
@@ -37,6 +37,7 @@ interface NavSection {
                 [routerLink]="item.route"
                 routerLinkActive="active"
                 class="nav-item"
+                (click)="onNavClick($event, item.route)"
               >
                 <span class="nav-icon">{{ item.icon }}</span>
                 <span class="nav-label">{{ item.label }}</span>
@@ -202,8 +203,15 @@ interface NavSection {
 })
 export class SidebarComponent {
   private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
   readonly navSections = computed<NavSection[]>(() => this.buildNavSections(this.authService.getRole()));
+
+  onNavClick(event: MouseEvent, route: string): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.router.navigateByUrl(route);
+  }
 
   private buildNavSections(role: UserRole | null): NavSection[] {
     if (role === 'ASSISTANT_CHEF') {
