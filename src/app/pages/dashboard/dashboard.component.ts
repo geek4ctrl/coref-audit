@@ -1006,11 +1006,7 @@ export class DashboardComponent implements OnInit {
   }
 
   openFirstDocumentForClassification(): void {
-    const firstDocument = this.recentAssistantDocuments[0];
-    if (!firstDocument) {
-      return;
-    }
-    this.classifyDocument(firstDocument.id);
+    this.router.navigate(['/a-classer-annoter']);
   }
 
   goToSentView(): void {
