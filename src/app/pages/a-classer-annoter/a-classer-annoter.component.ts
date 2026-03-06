@@ -96,6 +96,11 @@ interface AssistantDashboardResponse {
     </div>
   `,
   styles: [`
+    .screen,
+    .screen * {
+      font-size: 11px !important;
+    }
+
     .screen {
       display: flex;
       flex-direction: column;
