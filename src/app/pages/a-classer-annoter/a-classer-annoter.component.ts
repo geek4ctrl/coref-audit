@@ -104,7 +104,7 @@ interface AssistantDashboardResponse {
 
     .heading h2 {
       margin: 0;
-      font-size: 34px;
+      font-size: 12px;
       line-height: 1.1;
       color: #0b2f5c;
       letter-spacing: -0.02em;
@@ -113,7 +113,7 @@ interface AssistantDashboardResponse {
     .heading p {
       margin: 6px 0 0;
       color: #475569;
-      font-size: 15px;
+      font-size: 11px;
     }
 
     .kpi-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
@@ -132,8 +132,8 @@ interface AssistantDashboardResponse {
       box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
     }
 
-    .kpi-label { color: #475569; font-size: 13px; margin-bottom: 8px; }
-    .kpi-value { font-size: 40px; font-weight: 800; line-height: 1; }
+    .kpi-label { color: #475569; font-size: 11px; margin-bottom: 8px; }
+    .kpi-value { font-size: 12px; font-weight: 800; line-height: 1; }
     .kpi-value.blue { color: #2563eb; }
     .kpi-value.orange { color: #d97706; }
     .kpi-value.green { color: #16a34a; }
@@ -147,7 +147,7 @@ interface AssistantDashboardResponse {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
+      font-size: 12px;
       color: #1e293b;
     }
     .kpi-icon.blue { background: #dbeafe; color: #2563eb; }
@@ -165,7 +165,7 @@ interface AssistantDashboardResponse {
     .table-title {
       padding: 18px 20px;
       border-bottom: 1px solid #e2e8f0;
-      font-size: 26px;
+      font-size: 12px;
       font-weight: 700;
       color: #0b2f5c;
       background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
@@ -175,7 +175,7 @@ interface AssistantDashboardResponse {
     .grid { width: 100%; border-collapse: collapse; }
     .grid th {
       text-align: left;
-      font-size: 11px;
+      font-size: 10px;
       color: #64748b;
       letter-spacing: 0.04em;
       padding: 12px 20px;
@@ -188,7 +188,7 @@ interface AssistantDashboardResponse {
       padding: 14px 20px;
       border-bottom: 1px solid #f1f5f9;
       color: #1e293b;
-      font-size: 14px;
+      font-size: 11px;
       vertical-align: middle;
       white-space: nowrap;
     }
@@ -210,7 +210,7 @@ interface AssistantDashboardResponse {
       align-items: center;
       border-radius: 999px;
       padding: 3px 10px;
-      font-size: 12px;
+      font-size: 10px;
       border: 1px solid transparent;
     }
     .pill.neutral { background: #f1f5f9; border-color: #e2e8f0; color: #475569; }
@@ -232,7 +232,7 @@ interface AssistantDashboardResponse {
       align-items: center;
       justify-content: center;
       color: #334155;
-      font-size: 14px;
+      font-size: 12px;
       transition: all 0.15s ease;
     }
 
@@ -248,12 +248,12 @@ interface AssistantDashboardResponse {
     .icon.send { color: #16a34a; border-color: #bbf7d0; background: #f0fdf4; }
     .icon:disabled { opacity: 0.55; cursor: not-allowed; }
 
-    .empty { padding: 18px 20px; color: #64748b; font-size: 14px; border-top: 1px solid #e2e8f0; }
+    .empty { padding: 18px 20px; color: #64748b; font-size: 11px; border-top: 1px solid #e2e8f0; }
 
     @media (max-width: 1024px) {
       .kpi-grid { grid-template-columns: 1fr; }
-      .table-title { font-size: 22px; }
-      .heading h2 { font-size: 28px; }
+      .table-title { font-size: 12px; }
+      .heading h2 { font-size: 12px; }
       .grid th,
       .grid td { padding: 10px 12px; }
     }

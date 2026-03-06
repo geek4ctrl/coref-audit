@@ -233,14 +233,14 @@ interface DashboardDocument {
     }
 
     .page-title {
-      font-size: 22px;
+      font-size: 12px;
       font-weight: 800;
       color: #0f172a;
       margin: 0 0 4px 0;
     }
 
     .page-subtitle {
-      font-size: 13px;
+      font-size: 11px;
       color: #6b7280;
       margin: 0;
     }
@@ -253,7 +253,7 @@ interface DashboardDocument {
 
     .assistant-page-title {
       margin: 0;
-      font-size: 30px;
+      font-size: 12px;
       font-weight: 800;
       color: #0b2f5c;
       letter-spacing: -0.01em;
@@ -262,12 +262,12 @@ interface DashboardDocument {
     .assistant-page-subtitle {
       margin: 6px 0 0;
       color: #475569;
-      font-size: 15px;
+      font-size: 11px;
     }
 
     .assistant-date {
       color: #334155;
-      font-size: 13px;
+      font-size: 11px;
       margin-top: 8px;
       text-transform: capitalize;
     }
@@ -302,7 +302,7 @@ interface DashboardDocument {
 
     .assistant-kpi-title {
       color: #0f172a;
-      font-size: 15px;
+      font-size: 11px;
       font-weight: 600;
     }
 
@@ -313,7 +313,7 @@ interface DashboardDocument {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
+      font-size: 12px;
       color: #fff;
       box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
     }
@@ -325,7 +325,7 @@ interface DashboardDocument {
 
     .assistant-kpi-count {
       color: #0b2f5c;
-      font-size: 38px;
+      font-size: 12px;
       font-weight: 800;
       line-height: 1;
       margin: 10px 0 6px;
@@ -333,7 +333,7 @@ interface DashboardDocument {
 
     .assistant-kpi-note {
       color: #64748b;
-      font-size: 13px;
+      font-size: 11px;
     }
 
     .assistant-panel {
@@ -347,7 +347,7 @@ interface DashboardDocument {
     .assistant-panel-title {
       margin: 0 0 14px;
       color: #0b2f5c;
-      font-size: 28px;
+      font-size: 12px;
       font-weight: 700;
     }
 
@@ -387,13 +387,13 @@ interface DashboardDocument {
       align-items: center;
       justify-content: center;
       text-align: center;
-      font-size: 15px;
+      font-size: 12px;
       flex-shrink: 0;
     }
 
     .assistant-action strong {
       display: block;
-      font-size: 17px;
+      font-size: 12px;
       line-height: 1.25;
     }
 
@@ -401,7 +401,7 @@ interface DashboardDocument {
       display: block;
       color: #64748b;
       margin-top: 2px;
-      font-size: 13px;
+      font-size: 11px;
     }
 
     .assistant-list-panel {
@@ -419,7 +419,7 @@ interface DashboardDocument {
       border: none;
       background: transparent;
       color: #0b2f5c;
-      font-size: 14px;
+      font-size: 11px;
       font-weight: 600;
       cursor: pointer;
     }
@@ -455,14 +455,14 @@ interface DashboardDocument {
 
     .assistant-doc-subject {
       color: #0f172a;
-      font-size: 22px;
+      font-size: 12px;
       font-weight: 700;
       margin-bottom: 6px;
     }
 
     .assistant-doc-footer {
       color: #334155;
-      font-size: 13px;
+      font-size: 11px;
     }
 
     .assistant-open-btn {
@@ -471,7 +471,7 @@ interface DashboardDocument {
       color: #fff;
       border-radius: 10px;
       padding: 10px 18px;
-      font-size: 13px;
+      font-size: 11px;
       font-weight: 600;
       cursor: pointer;
       transition: background 0.2s ease, transform 0.2s ease;
@@ -489,7 +489,7 @@ interface DashboardDocument {
 
     .assistant-empty {
       color: #64748b;
-      font-size: 14px;
+      font-size: 11px;
       border-top: 1px solid #e2e8f0;
       padding-top: 14px;
     }
@@ -592,7 +592,7 @@ interface DashboardDocument {
 
     .table-title {
       margin: 0 0 4px 0;
-      font-size: 16px;
+      font-size: 12px;
       font-weight: 700;
       color: #0f172a;
     }
@@ -628,7 +628,7 @@ interface DashboardDocument {
       padding: 14px 10px;
       border-bottom: 1px solid #eef2f7;
       vertical-align: top;
-      font-size: 13px;
+      font-size: 11px;
       color: #0f172a;
     }
 
@@ -707,7 +707,7 @@ interface DashboardDocument {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 13px;
+      font-size: 12px;
     }
 
     .icon-btn:hover {
@@ -721,20 +721,20 @@ interface DashboardDocument {
       }
 
       .assistant-page-title {
-        font-size: 24px;
+        font-size: 12px;
       }
 
       .assistant-page-subtitle,
       .assistant-date {
-        font-size: 13px;
+        font-size: 11px;
       }
 
       .assistant-panel-title {
-        font-size: 22px;
+        font-size: 12px;
       }
 
       .assistant-action strong {
-        font-size: 16px;
+        font-size: 12px;
       }
 
       .assistant-action small,
@@ -746,7 +746,7 @@ interface DashboardDocument {
       }
 
       .assistant-doc-subject {
-        font-size: 16px;
+        font-size: 12px;
       }
 
       .status-cards-grid {
@@ -781,7 +781,7 @@ interface DashboardDocument {
       }
 
       .page-title {
-        font-size: 20px;
+        font-size: 12px;
       }
     }
   `]
@@ -1014,7 +1014,7 @@ export class DashboardComponent implements OnInit {
   }
 
   goToSentView(): void {
-    this.router.navigate(['/dashboard']);
+    this.router.navigate(['/envoyes-au-chef']);
   }
 
   goToSearch(): void {

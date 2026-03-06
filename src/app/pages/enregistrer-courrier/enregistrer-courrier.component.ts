@@ -222,6 +222,11 @@ interface CreateReceptionDocumentResponse {
     </div>
   `,
   styles: [`
+    .page,
+    .page * {
+      font-size: 12px !important;
+    }
+
     .page {
       max-width: 1280px;
       margin: 0 auto;
