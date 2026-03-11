@@ -25,7 +25,7 @@ interface LoginResponse {
   user: AuthUser;
 }
 
-export const API_BASE_URL = 'http://localhost:3000';
+export const API_BASE_URL = 'https://coref-audit-api-production.up.railway.app';
 export const STORAGE_KEY = 'coref-auth';
 
 @Injectable({ providedIn: 'root' })
