@@ -116,14 +116,33 @@ interface DashboardDocument {
                 @for (doc of filteredPilierDocuments; track doc.id) {
                   <tr>
                     <td><div class="doc-number">{{ doc.number }}</div></td>
-                    <td><div class="doc-title">{{ doc.object }}</div></td>
+                    <td>
+                      <div class="doc-title">{{ doc.object }}</div>
+                      @if (doc.chiefInstruction) {
+                        <div class="doc-meta">{{ doc.chiefInstruction }}</div>
+                      }
+                    </td>
                     <td><span [class]="'status-pill ' + doc.statusTone">{{ doc.status }}</span></td>
                     <td>{{ doc.lastAction }}</td>
                     <td>{{ doc.deadline || '—' }}</td>
                     <td>
                       <div class="action-buttons">
+                        @if (doc.status === 'ENVOYE' || !doc.status) {
+                          <button class="pilier-action-btn blue" (click)="pilierAction(doc.id, 'acknowledge')" [disabled]="isBusy(doc.id)">Accuser réception</button>
+                        }
+                        @if (doc.status === 'RECU') {
+                          <button class="pilier-action-btn orange" (click)="pilierAction(doc.id, 'start-processing')" [disabled]="isBusy(doc.id)">Démarrer</button>
+                        }
+                        @if (doc.status === 'EN_TRAITEMENT') {
+                          <button class="pilier-action-btn green" (click)="pilierAction(doc.id, 'finalize')" [disabled]="isBusy(doc.id)">Finaliser</button>
+                        }
+                        @if (doc.status === 'FINALISE') {
+                          <button class="pilier-action-btn purple" (click)="pilierAction(doc.id, 'send-to-coordinator')" [disabled]="isBusy(doc.id)">Envoyer au Coord.</button>
+                        }
+                        @if (doc.status === 'ENVOYE_COORDINATEUR') {
+                          <span class="doc-meta">En attente validation</span>
+                        }
                         <button class="icon-btn" aria-label="Voir" (click)="viewPilierDocument(doc.id)">👁️</button>
-                        <button class="icon-btn" aria-label="Plus" (click)="viewPilierDocument(doc.id)">⋯</button>
                       </div>
                     </td>
                   </tr>
@@ -725,6 +744,25 @@ interface DashboardDocument {
       margin: 0;
     }
 
+    .pilier-action-btn {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #fff;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.2s;
+    }
+
+    .pilier-action-btn:hover:not(:disabled) { opacity: 0.85; }
+    .pilier-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .pilier-action-btn.blue { background: #2563eb; }
+    .pilier-action-btn.orange { background: #f97316; }
+    .pilier-action-btn.green { background: #16a34a; }
+    .pilier-action-btn.purple { background: #7c3aed; }
+
     .status-cards-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1061,7 +1099,7 @@ export class DashboardComponent implements OnInit {
     { key: 'termines', label: 'Terminés', icon: '✓' }
   ];
 
-  pilierDocuments: Array<DashboardDocument & { category: string; deadline?: string }> = [];
+  pilierDocuments: Array<DashboardDocument & { category: string; deadline?: string; chiefInstruction?: string }> = [];
 
   statusCards: StatusCard[] = [
     {
@@ -1356,7 +1394,7 @@ export class DashboardComponent implements OnInit {
 
   // ── Pilier mode ──
 
-  get filteredPilierDocuments(): Array<DashboardDocument & { category: string; deadline?: string }> {
+  get filteredPilierDocuments(): Array<DashboardDocument & { category: string; deadline?: string; chiefInstruction?: string }> {
     return this.pilierDocuments.filter((d) => d.category === this.pilierActiveTab);
   }
 
@@ -1366,6 +1404,27 @@ export class DashboardComponent implements OnInit {
 
   viewPilierDocument(documentId: number): void {
     this.router.navigate(['/documents'], { queryParams: { docId: documentId } });
+  }
+
+  pilierAction(documentId: number, action: string): void {
+    if (this.pendingDocumentIds.has(documentId)) return;
+    this.pendingDocumentIds.add(documentId);
+
+    const body: Record<string, unknown> = {};
+    if (action === 'finalize') {
+      const note = window.prompt('Ajoutez une note (optionnel):') || '';
+      if (note.trim()) body['note'] = note.trim();
+    }
+
+    this.http.patch(`${API_BASE_URL}/pilier/documents/${documentId}/${action}`, body).subscribe({
+      next: () => {
+        this.pendingDocumentIds.delete(documentId);
+        this.loadPilierDashboard();
+      },
+      error: () => {
+        this.pendingDocumentIds.delete(documentId);
+      }
+    });
   }
 
   private initPilierDashboard(): void {
@@ -1444,7 +1503,8 @@ export class DashboardComponent implements OnInit {
             delay: doc.delay || '',
             delayTone: doc.delayTone || 'muted',
             category: doc.category || 'a-receptionner',
-            deadline: doc.deadline ? this.formatDate(doc.deadline) : undefined
+            deadline: doc.deadline ? this.formatDate(doc.deadline) : undefined,
+            chiefInstruction: doc.chiefInstruction || ''
           }));
         }
 
