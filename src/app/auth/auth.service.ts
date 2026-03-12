@@ -73,8 +73,9 @@ export class AuthService {
         return '/dashboard';
       case 'RECEPTION':
         return '/reception';
-      case 'SECRETARIAT':
       case 'PILIER':
+        return '/dashboard';
+      case 'SECRETARIAT':
       case 'PILIER_COORD':
       case 'SERVICE_INTERNE':
         return '/documents';

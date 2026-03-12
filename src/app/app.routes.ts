@@ -33,7 +33,7 @@ export const routes: Routes = [
       {
         path: 'dashboard',
         component: DashboardComponent,
-        data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF', 'AUDITEUR'] },
+        data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF', 'PILIER', 'AUDITEUR'] },
       },
       {
         path: 'a-classer-annoter',
@@ -117,7 +117,7 @@ export const routes: Routes = [
       {
         path: 'nouveau',
         component: NouveauDocumentComponent,
-        data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF', 'SECRETARIAT'] },
+        data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF', 'SECRETARIAT', 'PILIER'] },
       },
       { path: 'espace-reception', component: EspaceReceptionComponent, data: { roles: ['ADMIN'] } },
       { path: 'services', component: EspaceReceptionComponent, data: { roles: ['ADMIN'] } },
