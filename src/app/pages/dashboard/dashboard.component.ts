@@ -60,7 +60,85 @@ interface DashboardDocument {
   imports: [CommonModule, StatusCardComponent],
   template: `
     <div class="dashboard">
-      @if (isAssistantMode) {
+      @if (isPilierMode) {
+        <div class="page-heading">
+          <div>
+            <h2 class="page-title pilier-title">Mes Documents - Service</h2>
+            <p class="page-subtitle">{{ pilierServiceName }}</p>
+          </div>
+        </div>
+
+        <div class="pilier-status-cards">
+          @for (card of pilierCards; track card.label) {
+            <div
+              class="pilier-card"
+              [class.pilier-card-active]="pilierActiveTab === card.tabKey"
+              (click)="setPilierTab(card.tabKey)"
+            >
+              <div class="pilier-card-content">
+                <span class="pilier-card-label">{{ card.label }}</span>
+                <span class="pilier-card-count" [style.color]="card.countColor">{{ card.count }}</span>
+              </div>
+              <div class="pilier-card-icon" [style.background]="card.iconBg">
+                <span [style.color]="card.iconColor">{{ card.icon }}</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="pilier-table-card">
+          <div class="pilier-tabs">
+            @for (tab of pilierTabs; track tab.key) {
+              <button
+                class="pilier-tab"
+                [class.pilier-tab-active]="pilierActiveTab === tab.key"
+                (click)="setPilierTab(tab.key)"
+              >
+                <span class="pilier-tab-icon">{{ tab.icon }}</span>
+                {{ tab.label }}
+              </button>
+            }
+          </div>
+
+          <div class="table-wrapper">
+            <table class="documents-table">
+              <thead>
+                <tr>
+                  <th>Numéro</th>
+                  <th>Objet</th>
+                  <th>Statut</th>
+                  <th>Dernière action</th>
+                  <th>Échéance</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (doc of filteredPilierDocuments; track doc.id) {
+                  <tr>
+                    <td><div class="doc-number">{{ doc.number }}</div></td>
+                    <td><div class="doc-title">{{ doc.object }}</div></td>
+                    <td><span [class]="'status-pill ' + doc.statusTone">{{ doc.status }}</span></td>
+                    <td>{{ doc.lastAction }}</td>
+                    <td>{{ doc.deadline || '—' }}</td>
+                    <td>
+                      <div class="action-buttons">
+                        <button class="icon-btn" aria-label="Voir" (click)="viewPilierDocument(doc.id)">👁️</button>
+                        <button class="icon-btn" aria-label="Plus" (click)="viewPilierDocument(doc.id)">⋯</button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+            @if (filteredPilierDocuments.length === 0) {
+              <div class="pilier-empty-state">
+                <div class="pilier-empty-icon">☑</div>
+                <p>Aucun document dans cette catégorie</p>
+              </div>
+            }
+          </div>
+        </div>
+      } @else if (isAssistantMode) {
         <div class="assistant-page-heading">
           <div>
             <h2 class="assistant-page-title">Dashboard Assistante</h2>
@@ -507,6 +585,146 @@ interface DashboardDocument {
       padding-top: 14px;
     }
 
+    .page-title.pilier-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: #0b2f5c;
+    }
+
+    .pilier-status-cards {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 16px;
+      background: #fff;
+    }
+
+    .pilier-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #f8fafc;
+      border-radius: 14px;
+      padding: 18px 20px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 2px solid transparent;
+    }
+
+    .pilier-card:hover {
+      border-color: #e2e8f0;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+    }
+
+    .pilier-card-active {
+      border-color: #2563eb;
+      background: #eff6ff;
+    }
+
+    .pilier-card-content {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .pilier-card-label {
+      font-size: 13px;
+      color: #475569;
+      font-weight: 500;
+    }
+
+    .pilier-card-count {
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .pilier-card-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .pilier-table-card {
+      background: white;
+      border-radius: 16px;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+    }
+
+    .pilier-tabs {
+      display: flex;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 0 8px;
+    }
+
+    .pilier-tab {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 16px;
+      border: none;
+      background: transparent;
+      color: #6b7280;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s ease;
+    }
+
+    .pilier-tab:hover {
+      color: #0b2f5c;
+      background: #f8fafc;
+    }
+
+    .pilier-tab-active {
+      color: #0b2f5c;
+      font-weight: 700;
+      border-bottom-color: #0b2f5c;
+    }
+
+    .pilier-tab-icon {
+      font-size: 15px;
+    }
+
+    .pilier-empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      color: #94a3b8;
+    }
+
+    .pilier-empty-icon {
+      width: 64px;
+      height: 64px;
+      background: #f1f5f9;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      color: #94a3b8;
+      margin-bottom: 16px;
+    }
+
+    .pilier-empty-state p {
+      font-size: 14px;
+      color: #94a3b8;
+      margin: 0;
+    }
+
     .status-cards-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -728,6 +946,14 @@ interface DashboardDocument {
     }
 
     @media (max-width: 1024px) {
+      .pilier-status-cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .pilier-tabs {
+        flex-wrap: wrap;
+      }
+
       .assistant-kpi-grid,
       .assistant-actions-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -808,10 +1034,34 @@ export class DashboardComponent implements OnInit {
   pageSubtitle = "Centre de contrôle — Vue d'ensemble en 5 secondes";
   isAssistantMode = false;
   isChefMode = false;
+  isPilierMode = false;
   isLoading = false;
   pendingDocumentIds = new Set<number>();
   assistantDisplayName = 'Assistante';
   todayLabel = '';
+
+  // Pilier mode properties
+  pilierServiceName = '';
+  pilierActiveTab = 'a-receptionner';
+
+  pilierCards: Array<{
+    label: string;
+    count: number;
+    countColor: string;
+    icon: string;
+    iconBg: string;
+    iconColor: string;
+    tabKey: string;
+  }> = [];
+
+  pilierTabs = [
+    { key: 'a-receptionner', label: 'À réceptionner', icon: '☑' },
+    { key: 'en-traitement', label: 'En traitement', icon: '▶' },
+    { key: 'chez-coordinateur', label: 'Chez Coordinateur', icon: '◐' },
+    { key: 'termines', label: 'Terminés', icon: '✓' }
+  ];
+
+  pilierDocuments: Array<DashboardDocument & { category: string; deadline?: string }> = [];
 
   statusCards: StatusCard[] = [
     {
@@ -900,6 +1150,7 @@ export class DashboardComponent implements OnInit {
     const role = this.authService.getRole();
     this.isAssistantMode = role === 'ASSISTANT_CHEF';
     this.isChefMode = role === 'CHEF_SG';
+    this.isPilierMode = role === 'PILIER';
     const isChefSgMode = role === 'CHEF_SG';
     this.assistantDisplayName = this.authService.user()?.name || 'Assistante';
     this.todayLabel = new Intl.DateTimeFormat('fr-FR', {
@@ -908,6 +1159,12 @@ export class DashboardComponent implements OnInit {
       month: 'long',
       year: 'numeric'
     }).format(new Date());
+
+    if (this.isPilierMode) {
+      this.initPilierDashboard();
+      return;
+    }
+
     if (!this.isAssistantMode && !isChefSgMode) {
       return;
     }
@@ -1095,6 +1352,108 @@ export class DashboardComponent implements OnInit {
 
   navigateTo(route: string): void {
     this.router.navigate([route]);
+  }
+
+  // ── Pilier mode ──
+
+  get filteredPilierDocuments(): Array<DashboardDocument & { category: string; deadline?: string }> {
+    return this.pilierDocuments.filter((d) => d.category === this.pilierActiveTab);
+  }
+
+  setPilierTab(key: string): void {
+    this.pilierActiveTab = key;
+  }
+
+  viewPilierDocument(documentId: number): void {
+    this.router.navigate(['/documents'], { queryParams: { docId: documentId } });
+  }
+
+  private initPilierDashboard(): void {
+    const user = this.authService.user();
+    this.pilierServiceName = (user as any)?.service || (user as any)?.pilier || '';
+
+    this.pilierCards = [
+      {
+        label: 'À réceptionner',
+        count: 0,
+        countColor: '#2563eb',
+        icon: '☑',
+        iconBg: '#eff6ff',
+        iconColor: '#2563eb',
+        tabKey: 'a-receptionner'
+      },
+      {
+        label: 'En traitement',
+        count: 0,
+        countColor: '#f97316',
+        icon: '▶',
+        iconBg: '#fff7ed',
+        iconColor: '#f97316',
+        tabKey: 'en-traitement'
+      },
+      {
+        label: 'Chez Coordinateur',
+        count: 0,
+        countColor: '#7c3aed',
+        icon: '◐',
+        iconBg: '#f5f3ff',
+        iconColor: '#7c3aed',
+        tabKey: 'chez-coordinateur'
+      },
+      {
+        label: 'En retard',
+        count: 0,
+        countColor: '#dc2626',
+        icon: '⏱',
+        iconBg: '#fef2f2',
+        iconColor: '#dc2626',
+        tabKey: 'en-retard'
+      }
+    ];
+
+    this.loadPilierDashboard();
+  }
+
+  private loadPilierDashboard(): void {
+    this.isLoading = true;
+    this.http.get<any>(`${API_BASE_URL}/pilier/dashboard`).subscribe({
+      next: (response) => {
+        if (response?.cards) {
+          this.pilierCards[0].count = response.cards.toReceive ?? 0;
+          this.pilierCards[1].count = response.cards.inProgress ?? 0;
+          this.pilierCards[2].count = response.cards.atCoordinator ?? 0;
+          this.pilierCards[3].count = response.cards.late ?? 0;
+        }
+
+        if (response?.serviceName) {
+          this.pilierServiceName = response.serviceName;
+        }
+
+        if (response?.documents) {
+          this.pilierDocuments = response.documents.map((doc: any) => ({
+            id: doc.id,
+            number: doc.number,
+            object: doc.object,
+            type: doc.type || '',
+            owner: doc.owner || '',
+            ownerRole: doc.ownerRole || '',
+            status: doc.status,
+            statusTone: doc.statusTone || 'info',
+            lastAction: this.formatDate(doc.lastActionAt || doc.lastAction || ''),
+            lastActionNote: doc.lastActionNote || '',
+            delay: doc.delay || '',
+            delayTone: doc.delayTone || 'muted',
+            category: doc.category || 'a-receptionner',
+            deadline: doc.deadline ? this.formatDate(doc.deadline) : undefined
+          }));
+        }
+
+        this.isLoading = false;
+      },
+      error: () => {
+        this.isLoading = false;
+      }
+    });
   }
 
   private loadAssistantDashboard(): void {
