@@ -76,9 +76,9 @@ interface CreateReceptionDocumentResponse {
           <label class="field">
             <span>Priorité</span>
             <select [(ngModel)]="priorite" name="priorite">
-              <option>Normal</option>
-              <option>Urgent</option>
-              <option>Très urgent</option>
+              <option value="Normale">Normal</option>
+              <option value="Haute">Urgent</option>
+              <option value="Urgente">Très urgent</option>
             </select>
           </label>
         </div>
@@ -602,7 +602,7 @@ export class EnregistrerCourrierComponent {
   currentStep = 1;
 
   typeDocument = "Courrier d'arrivée";
-  priorite = 'Normal';
+  priorite = 'Normale';
   nomExpediteur = '';
   organisme = '';
   typeExpediteur = 'Externe';
@@ -667,7 +667,8 @@ export class EnregistrerCourrierComponent {
       subject: this.objet.trim(),
       category: this.typeDocument,
       confidentiality: this.mapConfidentialite(),
-      observations: this.buildObservations()
+      observations: this.buildObservations(),
+      priority: this.priorite
     };
 
     this.http.post<CreateReceptionDocumentResponse>(`${API_BASE_URL}/reception/documents`, payload).subscribe({
