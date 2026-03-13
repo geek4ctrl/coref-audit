@@ -223,14 +223,8 @@ export class SidebarComponent {
             { label: 'À classer / Annoter', route: '/a-classer-annoter', icon: '◻' },
             { label: 'Rédiger un document', route: '/nouveau', icon: '▣' },
             { label: 'Envoyés au Chef', route: '/envoyes-au-chef', icon: '✈' },
-            { label: 'À traiter par Chef', route: '/a-traiter-par-chef', icon: '◷' }
-          ]
-        },
-        {
-          title: '',
-          items: [
-            { label: 'Recherche', route: '/recherche', icon: '🔍' },
-            { label: 'Messagerie', route: '/messagerie', icon: '✉️' }
+            { label: 'À traiter par Chef', route: '/a-traiter-par-chef', icon: '◷' },
+            { label: 'Recherche', route: '/recherche', icon: '🔍' }
           ]
         }
       ];
@@ -320,6 +314,20 @@ export class SidebarComponent {
       ];
     }
 
+    if (role === 'AUDITEUR') {
+      return [
+        {
+          title: 'AUDIT & CONTRÔLE',
+          items: [
+            { label: 'Dashboard', route: '/dashboard', icon: '📊' },
+            { label: 'Documents', route: '/documents', icon: '📄' },
+            { label: 'Retards', route: '/retards', icon: '⏱️' },
+            { label: 'Recherche', route: '/recherche', icon: '🔍' }
+          ]
+        }
+      ];
+    }
+
     if (role === 'CHEF_SG') {
       return [
         {
@@ -330,12 +338,7 @@ export class SidebarComponent {
             { label: 'Recherche', route: '/recherche', icon: '🔍' },
             { label: 'Envoyer / Router', route: '/envoi', icon: '📤' },
             { label: 'Relances', route: '/relances', icon: '🔔' },
-            { label: 'Retards', route: '/retards', icon: '⏱️' }
-          ]
-        },
-        {
-          title: '',
-          items: [
+            { label: 'Retards', route: '/retards', icon: '⏱️' },
             { label: 'Messagerie', route: '/messagerie', icon: '✉️' }
           ]
         }
@@ -368,22 +371,11 @@ export class SidebarComponent {
 
     return [
       {
-        title: 'CHEF / SG',
+        title: '',
         items: [
           { label: 'Dashboard', route: '/dashboard', icon: '📊' },
-          { label: 'Documents', route: '/documents', icon: '📄', badge: 3 },
-          { label: 'Recherche', route: '/recherche', icon: '🔍' },
-          { label: 'Envoyer / Router', route: '/envoi', icon: '📤' },
-          { label: 'Relances', route: '/relances', icon: '🔔' },
-          { label: 'Retards', route: '/retards', icon: '⏱️' }
-        ]
-      },
-      {
-        title: 'ADMINISTRATION',
-        items: [
-          { label: 'Utilisateurs', route: '/utilisateurs', icon: '👥' },
-          { label: 'Rôles & Permissions', route: '/categories', icon: '🛡️' },
-          { label: 'Services & Piliers', route: '/services', icon: '🏛️' }
+          { label: 'Documents', route: '/documents', icon: '📄' },
+          { label: 'Recherche', route: '/recherche', icon: '🔍' }
         ]
       }
     ];
