@@ -340,6 +340,48 @@ interface DashboardDocument {
           }
         </div>
 
+        @if (secretariatFormattedDocuments.length > 0) {
+          <div class="sec-panel">
+            <div class="sec-panel-header">
+              <div class="sec-panel-title">
+                <span class="sec-panel-title-icon">✔</span>
+                <strong>Documents formatés — prêts à envoyer</strong>
+              </div>
+            </div>
+            <div class="table-wrapper">
+              <table class="documents-table">
+                <thead>
+                  <tr>
+                    <th>Numéro</th>
+                    <th>Objet</th>
+                    <th>Expéditeur</th>
+                    <th>Statut</th>
+                    <th>Formaté le</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (doc of secretariatFormattedDocuments; track doc.id) {
+                    <tr>
+                      <td><div class="doc-number">{{ doc.number }}</div></td>
+                      <td><div class="doc-title">{{ doc.object }}</div></td>
+                      <td>{{ doc.owner }}</td>
+                      <td><span class="status-pill success">{{ doc.status }}</span></td>
+                      <td>{{ doc.lastAction }}</td>
+                      <td>
+                        <div class="action-buttons">
+                          <button class="pilier-action-btn green" (click)="secretariatSendToAssistant(doc.id)" [disabled]="isBusy(doc.id)">Envoyer à l'Assistante</button>
+                          <button class="icon-btn" aria-label="Voir" (click)="navigateTo('/documents')">👁️</button>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        }
+
         <div class="sec-mission-card">
           <div class="sec-mission-title">
             <span>📄</span>
@@ -347,11 +389,11 @@ interface DashboardDocument {
           </div>
           <div class="sec-mission-item">
             <span class="sec-mission-check">✔</span>
-            Recevoir les documents techniques des Piliers
+            Recevoir les documents du Chef et effectuer la mise en forme
           </div>
           <div class="sec-mission-item">
             <span class="sec-mission-check">✔</span>
-            Effectuer la mise en forme administrative officielle
+            Envoyer les documents formatés à l'Assistante du Chef
           </div>
         </div>
       } @else if (isAssistantMode) {
@@ -1516,6 +1558,7 @@ export class DashboardComponent implements OnInit {
     iconColor: string;
   }> = [];
   secretariatDocuments: Array<DashboardDocument> = [];
+  secretariatFormattedDocuments: Array<DashboardDocument> = [];
 
   pilierCards: Array<{
     label: string;
@@ -2215,6 +2258,20 @@ export class DashboardComponent implements OnInit {
     });
   }
 
+  secretariatSendToAssistant(documentId: number): void {
+    if (this.pendingDocumentIds.has(documentId)) return;
+    this.pendingDocumentIds.add(documentId);
+    this.http.patch(`${API_BASE_URL}/secretariat/documents/${documentId}/send-to-assistant`, {}).subscribe({
+      next: () => {
+        this.pendingDocumentIds.delete(documentId);
+        this.loadSecretariatDashboard();
+      },
+      error: () => {
+        this.pendingDocumentIds.delete(documentId);
+      }
+    });
+  }
+
   // ── SERVICE INTERNE DASHBOARD ──
 
   private initServiceDashboard(): void {
@@ -2324,6 +2381,23 @@ export class DashboardComponent implements OnInit {
             lastActionNote: doc.lastActionNote || '',
             delay: doc.delay || '',
             delayTone: doc.delayTone || 'muted'
+          }));
+        }
+
+        if (response?.formattedDocuments) {
+          this.secretariatFormattedDocuments = response.formattedDocuments.map((doc: any) => ({
+            id: doc.id,
+            number: doc.number,
+            object: doc.object || doc.subject,
+            type: doc.type || '',
+            owner: doc.owner || doc.sender || '',
+            ownerRole: doc.ownerRole || '',
+            status: doc.status,
+            statusTone: 'success',
+            lastAction: this.formatDate(doc.lastActionAt || doc.receivedDate || ''),
+            lastActionNote: '',
+            delay: '',
+            delayTone: 'muted'
           }));
         }
 
