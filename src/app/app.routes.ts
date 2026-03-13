@@ -33,7 +33,7 @@ export const routes: Routes = [
       {
         path: 'dashboard',
         component: DashboardComponent,
-        data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF', 'PILIER', 'SECRETARIAT', 'AUDITEUR'] },
+        data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF', 'PILIER', 'SECRETARIAT', 'SERVICE_INTERNE', 'AUDITEUR'] },
       },
       {
         path: 'a-classer-annoter',
@@ -48,7 +48,7 @@ export const routes: Routes = [
       {
         path: 'a-traiter-par-chef',
         component: ATraiterParChefComponent,
-        data: { roles: ['ADMIN', 'ASSISTANT_CHEF'] },
+        data: { roles: ['ADMIN', 'ASSISTANT_CHEF', 'SERVICE_INTERNE'] },
       },
       {
         path: 'documents',
@@ -89,7 +89,7 @@ export const routes: Routes = [
       {
         path: 'messagerie',
         component: MessagerieComponent,
-        data: { roles: ['ADMIN', 'RECEPTION'] },
+        data: { roles: ['ADMIN', 'RECEPTION', 'SERVICE_INTERNE'] },
       },
       {
         path: 'envoi',
@@ -117,7 +117,7 @@ export const routes: Routes = [
       {
         path: 'nouveau',
         component: NouveauDocumentComponent,
-        data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF', 'SECRETARIAT', 'PILIER'] },
+        data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF', 'SECRETARIAT', 'PILIER', 'SERVICE_INTERNE'] },
       },
       { path: 'espace-reception', component: EspaceReceptionComponent, data: { roles: ['ADMIN'] } },
       { path: 'services', component: EspaceReceptionComponent, data: { roles: ['ADMIN'] } },
