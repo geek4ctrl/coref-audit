@@ -597,6 +597,113 @@ interface DashboardDocument {
             <div class="assistant-empty">Aucun document reçu.</div>
           }
         </div>
+      } @else if (isAuditeurMode) {
+        <div class="page-heading">
+          <div>
+            <h2 class="page-title">Dashboard Audit & Contrôle</h2>
+            <p class="page-subtitle">Vue d'ensemble de la traçabilité des documents — {{ todayLabel }}</p>
+          </div>
+        </div>
+
+        <div class="pilier-status-cards">
+          <div class="pilier-card" [class.pilier-card-active]="auditeurActiveTab === 'all'" (click)="setAuditeurTab('all')">
+            <div class="pilier-card-content">
+              <span class="pilier-card-label">Total documents</span>
+              <span class="pilier-card-count" style="color: #0b3a78">{{ auditeurCards.total }}</span>
+            </div>
+            <div class="pilier-card-icon" style="background: #dbeafe"><span style="color: #1d4ed8">📋</span></div>
+          </div>
+          <div class="pilier-card" [class.pilier-card-active]="auditeurActiveTab === 'late'" (click)="setAuditeurTab('late')">
+            <div class="pilier-card-content">
+              <span class="pilier-card-label">En retard</span>
+              <span class="pilier-card-count" style="color: #dc2626">{{ auditeurCards.late }}</span>
+            </div>
+            <div class="pilier-card-icon" style="background: #fee2e2"><span style="color: #dc2626">⚠</span></div>
+          </div>
+          <div class="pilier-card" [class.pilier-card-active]="auditeurActiveTab === 'ontime'" (click)="setAuditeurTab('ontime')">
+            <div class="pilier-card-content">
+              <span class="pilier-card-label">Dans les délais</span>
+              <span class="pilier-card-count" style="color: #16a34a">{{ auditeurCards.onTime }}</span>
+            </div>
+            <div class="pilier-card-icon" style="background: #dcfce7"><span style="color: #16a34a">✔</span></div>
+          </div>
+          <div class="pilier-card" [class.pilier-card-active]="auditeurActiveTab === 'completed'" (click)="setAuditeurTab('completed')">
+            <div class="pilier-card-content">
+              <span class="pilier-card-label">Clôturés</span>
+              <span class="pilier-card-count" style="color: #6366f1">{{ auditeurCards.completed }}</span>
+            </div>
+            <div class="pilier-card-icon" style="background: #ede9fe"><span style="color: #6366f1">☑</span></div>
+          </div>
+          <div class="pilier-card">
+            <div class="pilier-card-content">
+              <span class="pilier-card-label">Urgents</span>
+              <span class="pilier-card-count" style="color: #ea580c">{{ auditeurCards.urgent }}</span>
+            </div>
+            <div class="pilier-card-icon" style="background: #ffedd5"><span style="color: #ea580c">🔥</span></div>
+          </div>
+        </div>
+
+        <div class="pilier-table-card">
+          <div class="pilier-tabs">
+            <button class="pilier-tab" [class.pilier-tab-active]="auditeurActiveTab === 'all'" (click)="setAuditeurTab('all')">
+              <span class="pilier-tab-icon">📋</span> Tous
+            </button>
+            <button class="pilier-tab" [class.pilier-tab-active]="auditeurActiveTab === 'late'" (click)="setAuditeurTab('late')">
+              <span class="pilier-tab-icon">⚠</span> En retard
+            </button>
+            <button class="pilier-tab" [class.pilier-tab-active]="auditeurActiveTab === 'ontime'" (click)="setAuditeurTab('ontime')">
+              <span class="pilier-tab-icon">✔</span> Dans les délais
+            </button>
+            <button class="pilier-tab" [class.pilier-tab-active]="auditeurActiveTab === 'completed'" (click)="setAuditeurTab('completed')">
+              <span class="pilier-tab-icon">☑</span> Clôturés
+            </button>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="documents-table">
+              <thead>
+                <tr>
+                  <th>Numéro</th>
+                  <th>Objet</th>
+                  <th>Priorité</th>
+                  <th>Expéditeur</th>
+                  <th>Affecté à</th>
+                  <th>Statut</th>
+                  <th>Décision Chef</th>
+                  <th>Échéance</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (doc of filteredAuditeurDocuments; track doc.id) {
+                  <tr [class.urgent-row]="doc.isLate">
+                    <td><div class="doc-number">{{ doc.number }}</div></td>
+                    <td><div class="doc-title">{{ doc.subject }}</div></td>
+                    <td><span [class]="'priority-pill ' + getPriorityTone(doc.priority)">{{ doc.priority }}</span></td>
+                    <td>{{ doc.sender }}</td>
+                    <td>{{ doc.owner }}</td>
+                    <td><span class="status-pill" [class.status-late]="doc.isLate">{{ doc.status }}</span></td>
+                    <td>{{ doc.chiefDecision }}</td>
+                    <td>
+                      @if (doc.deadline) {
+                        <span [class]="doc.isLate ? 'delay-pill' : 'doc-meta'">
+                          {{ formatDate(doc.deadline) }}
+                        </span>
+                      } @else {
+                        —
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+            @if (filteredAuditeurDocuments.length === 0) {
+              <div class="pilier-empty-state">
+                <div class="pilier-empty-icon">☑</div>
+                <p>Aucun document dans cette catégorie</p>
+              </div>
+            }
+          </div>
+        </div>
       } @else {
         <div class="page-heading">
           <div>
@@ -1631,6 +1738,11 @@ interface DashboardDocument {
       background: #dcfce7;
     }
 
+    .status-pill.status-late {
+      color: #b91c1c;
+      background: #fee2e2;
+    }
+
     .delay-pill.danger {
       color: #b91c1c;
       background: #fee2e2;
@@ -1755,6 +1867,7 @@ export class DashboardComponent implements OnInit {
   isServiceMode = false;
   isSecretariatMode = false;
   isCoordinatorMode = false;
+  isAuditeurMode = false;
   isLoading = false;
   pendingDocumentIds = new Set<number>();
   assistantDisplayName = 'Assistante';
@@ -1822,6 +1935,23 @@ export class DashboardComponent implements OnInit {
 
   setCoordinatorTab(tab: string): void {
     this.coordinatorActiveTab = tab;
+  }
+
+  // Auditeur mode data
+  auditeurActiveTab = 'all';
+  auditeurCards = { total: 0, late: 0, onTime: 0, completed: 0, urgent: 0, withDecision: 0 };
+  auditeurDocuments: Array<{ id: number; number: string; subject: string; sender: string; owner: string; status: string; chiefDecision: string; priority: string; pilierStatus: string; coordinatorStatus: string; deadline: string | null; isLate: boolean; createdAt: string }> = [];
+
+  get filteredAuditeurDocuments() {
+    if (this.auditeurActiveTab === 'all') return this.auditeurDocuments;
+    if (this.auditeurActiveTab === 'late') return this.auditeurDocuments.filter(d => d.isLate);
+    if (this.auditeurActiveTab === 'ontime') return this.auditeurDocuments.filter(d => !d.isLate && d.deadline && !['Traité', 'Clôturé'].includes(d.status));
+    if (this.auditeurActiveTab === 'completed') return this.auditeurDocuments.filter(d => ['Traité', 'Clôturé'].includes(d.status));
+    return this.auditeurDocuments;
+  }
+
+  setAuditeurTab(tab: string): void {
+    this.auditeurActiveTab = tab;
   }
 
   secretariatCards: Array<{
@@ -1946,6 +2076,7 @@ export class DashboardComponent implements OnInit {
     this.isServiceMode = role === 'SERVICE_INTERNE';
     this.isSecretariatMode = role === 'SECRETARIAT';
     this.isCoordinatorMode = role === 'PILIER_COORD';
+    this.isAuditeurMode = role === 'AUDITEUR';
     const isChefSgMode = role === 'CHEF_SG';
     this.assistantDisplayName = this.authService.user()?.name || 'Assistante';
     this.todayLabel = new Intl.DateTimeFormat('fr-FR', {
@@ -1972,6 +2103,11 @@ export class DashboardComponent implements OnInit {
 
     if (this.isSecretariatMode) {
       this.initSecretariatDashboard();
+      return;
+    }
+
+    if (this.isAuditeurMode) {
+      this.loadAuditeurDashboard();
       return;
     }
 
@@ -2806,12 +2942,31 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  private formatDate(value: string): string {
+  formatDate(value: string): string {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) {
       return '—';
     }
     return new Intl.DateTimeFormat('fr-FR').format(date);
+  }
+
+  // ── AUDITEUR DASHBOARD ──
+
+  private loadAuditeurDashboard(): void {
+    this.isLoading = true;
+    this.http.get<{
+      cards: { total: number; late: number; onTime: number; completed: number; urgent: number; withDecision: number };
+      documents: Array<{ id: number; number: string; subject: string; sender: string; owner: string; status: string; chiefDecision: string; priority: string; pilierStatus: string; coordinatorStatus: string; deadline: string | null; isLate: boolean; createdAt: string }>;
+    }>(`${API_BASE_URL}/auditeur/dashboard`).subscribe({
+      next: (data) => {
+        this.auditeurCards = data.cards;
+        this.auditeurDocuments = data.documents;
+        this.isLoading = false;
+      },
+      error: () => {
+        this.isLoading = false;
+      }
+    });
   }
 
   getPriorityTone(priority: string | undefined): string {

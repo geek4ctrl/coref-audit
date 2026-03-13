@@ -1,27 +1,15 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { API_BASE_URL } from '../../auth/auth.service';
 
-interface StatCard {
-  icon: string;
-  value: number;
-  label: string;
-  tone: 'danger' | 'warning' | 'info';
-}
-
-interface HolderDelay {
-  name: string;
-  count: number;
-  averageDelay: number;
-}
-
-interface LateDocument {
-  number: string;
-  title: string;
-  owner: string;
-  dueDate: string;
-  delay: string;
-  status: 'En cours' | 'En retard' | 'Relance envoyee';
-  priority: 'Haute' | 'Moyenne' | 'Basse';
+interface RetardsResponse {
+  cards: { totalLate: number; avgDelay: number; maxHolderName: string; maxHolderCount: number };
+  topHolders: { name: string; count: number; averageDelay: number }[];
+  documents: {
+    id: number; number: string; subject: string; owner: string;
+    dueDate: string; delayDays: number; priority: string; status: string;
+  }[];
 }
 
 @Component({
@@ -33,93 +21,96 @@ interface LateDocument {
       <div class="page-header">
         <div>
           <h2 class="page-title">Documents en Retard</h2>
-          <p class="page-subtitle">Suivi des echeances depassees — Urgence & Performance</p>
+          <p class="page-subtitle">Suivi des échéances dépassées — Urgence & Performance</p>
         </div>
       </div>
 
-      <div class="stats-grid">
-        @for (card of statCards; track card.label) {
+      @if (isLoading) {
+        <div class="loading-card">Chargement des données...</div>
+      } @else {
+        <div class="stats-grid">
           <div class="stat-card">
-            <div class="stat-icon" [class]="card.tone">
-              <span>{{ card.icon }}</span>
-            </div>
+            <div class="stat-icon danger"><span>⚠</span></div>
             <div class="stat-info">
-              <div class="stat-value">{{ card.value }}</div>
-              <div class="stat-label">{{ card.label }}</div>
+              <div class="stat-value">{{ cards.totalLate }}</div>
+              <div class="stat-label">Documents en retard</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon warning"><span>⏰</span></div>
+            <div class="stat-info">
+              <div class="stat-value">{{ cards.avgDelay }}</div>
+              <div class="stat-label">Jours de retard moyen</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon info"><span>↘</span></div>
+            <div class="stat-info">
+              <div class="stat-value">{{ cards.maxHolderCount }}</div>
+              <div class="stat-label">Max chez {{ cards.maxHolderName }}</div>
+            </div>
+          </div>
+        </div>
+
+        @if (topHolders.length) {
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Top {{ topHolders.length }} des détenteurs avec retards</h3>
+            </div>
+            <div class="holders-list">
+              @for (holder of topHolders; track holder.name; let i = $index) {
+                <div class="holder-row">
+                  <div class="holder-rank">{{ i + 1 }}</div>
+                  <div class="holder-details">
+                    <div class="holder-name">{{ holder.name }}</div>
+                    <div class="holder-meta">
+                      {{ holder.count }} documents en retard • Moyenne : {{ holder.averageDelay }} jours
+                    </div>
+                  </div>
+                </div>
+              }
             </div>
           </div>
         }
-      </div>
 
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title">Top 5 des detenteurs avec retards</h3>
-        </div>
-        <div class="holders-list">
-          @for (holder of topHolders; track holder.name; let i = $index) {
-            <div class="holder-row">
-              <div class="holder-rank">{{ i + 1 }}</div>
-              <div class="holder-details">
-                <div class="holder-name">{{ holder.name }}</div>
-                <div class="holder-meta">
-                  {{ holder.count }} documents en retard • Moyenne : {{ holder.averageDelay }} jours
-                </div>
-              </div>
-            </div>
-          }
-        </div>
-      </div>
-
-      <div class="card table-card">
-        <div class="card-header table-header">
-          <h3 class="card-title">Liste des documents en retard ({{ documents.length }})</h3>
-        </div>
-        <div class="table-wrapper">
-          <table class="documents-table">
-            <thead>
-              <tr>
-                <th>N° / Objet</th>
-                <th>Chez qui</th>
-                <th>Echeance</th>
-                <th>Retard</th>
-                <th>Statut</th>
-                <th>Priorite</th>
-                <th class="col-actions">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (doc of documents; track doc.number) {
+        <div class="card table-card">
+          <div class="card-header table-header">
+            <h3 class="card-title">Liste des documents en retard ({{ documents.length }})</h3>
+          </div>
+          <div class="table-wrapper">
+            <table class="documents-table">
+              <thead>
                 <tr>
-                  <td>
-                    <div class="doc-number">{{ doc.number }}</div>
-                    <div class="doc-title">{{ doc.title }}</div>
-                  </td>
-                  <td>
-                    <div class="doc-owner">{{ doc.owner }}</div>
-                  </td>
-                  <td>
-                    <div class="doc-meta">{{ doc.dueDate }}</div>
-                  </td>
-                  <td>
-                    <span class="delay-pill">{{ doc.delay }}</span>
-                  </td>
-                  <td>
-                    <span class="status-pill" [ngClass]="doc.status.toLowerCase().replace(' ', '-')">{{ doc.status }}</span>
-                  </td>
-                  <td>
-                    <span class="priority-pill" [ngClass]="doc.priority.toLowerCase()">{{ doc.priority }}</span>
-                  </td>
-                  <td class="actions">
-                    <button class="icon-btn" aria-label="Voir">👁</button>
-                    <button class="icon-btn" aria-label="Relancer">🔔</button>
-                    <button class="icon-btn" aria-label="Plus">⋯</button>
-                  </td>
+                  <th>N° / Objet</th>
+                  <th>Chez qui</th>
+                  <th>Échéance</th>
+                  <th>Retard</th>
+                  <th>Statut</th>
+                  <th>Priorité</th>
                 </tr>
-              }
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                @for (doc of documents; track doc.number) {
+                  <tr>
+                    <td>
+                      <div class="doc-number">{{ doc.number }}</div>
+                      <div class="doc-title">{{ doc.subject }}</div>
+                    </td>
+                    <td><div class="doc-owner">{{ doc.owner }}</div></td>
+                    <td><div class="doc-meta">{{ doc.dueDate }}</div></td>
+                    <td><span class="delay-pill">{{ doc.delayDays }} jours</span></td>
+                    <td><span class="status-pill">{{ doc.status }}</span></td>
+                    <td><span class="priority-pill" [ngClass]="doc.priority.toLowerCase()">{{ doc.priority }}</span></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+            @if (!documents.length) {
+              <div class="empty-state">Aucun document en retard.</div>
+            }
+          </div>
         </div>
-      </div>
+      }
     </div>
   `,
   styles: [`
@@ -373,12 +364,17 @@ interface LateDocument {
       color: #475569;
     }
 
+    .priority-pill.urgente {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
     .priority-pill.haute {
       background: #fef3c7;
       color: #b45309;
     }
 
-    .priority-pill.moyenne {
+    .priority-pill.moyenne, .priority-pill.normale {
       background: #e2e8f0;
       color: #475569;
     }
@@ -388,22 +384,14 @@ interface LateDocument {
       color: #15803d;
     }
 
-    .actions {
-      white-space: nowrap;
-    }
-
-    .icon-btn {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 6px 8px;
-      font-size: 12px;
-      cursor: pointer;
-      margin-right: 6px;
-    }
-
-    .icon-btn:last-child {
-      margin-right: 0;
+    .empty-state, .loading-card {
+      padding: 32px;
+      text-align: center;
+      font-size: 13px;
+      color: #64748b;
+      background: #ffffff;
+      border-radius: 16px;
+      border: 1px solid #e5e7eb;
     }
 
     @media (max-width: 1024px) {
@@ -419,66 +407,24 @@ interface LateDocument {
     }
   `]
 })
-export class RetardsComponent {
-  statCards: StatCard[] = [
-    { icon: '⚠', value: 13, label: 'Documents en retard', tone: 'danger' },
-    { icon: '⏰', value: 7, label: 'Jours de retard moyen', tone: 'warning' },
-    { icon: '↘', value: 5, label: 'Max chez Marie', tone: 'info' }
-  ];
+export class RetardsComponent implements OnInit {
+  private readonly http = inject(HttpClient);
+  isLoading = true;
+  cards = { totalLate: 0, avgDelay: 0, maxHolderName: '—', maxHolderCount: 0 };
+  topHolders: { name: string; count: number; averageDelay: number }[] = [];
+  documents: { id: number; number: string; subject: string; owner: string; dueDate: string; delayDays: number; priority: string; status: string }[] = [];
 
-  topHolders: HolderDelay[] = [
-    { name: 'Marie Kabongo', count: 5, averageDelay: 8 },
-    { name: 'Direction des Ressources Humaines', count: 3, averageDelay: 7 },
-    { name: 'Jean Mukendi', count: 2, averageDelay: 8 },
-    { name: 'Service Logistique', count: 2, averageDelay: 2 },
-    { name: 'Service Juridique', count: 1, averageDelay: 13 }
-  ];
-
-  documents: LateDocument[] = [
-    {
-      number: 'COREF-2025-0086',
-      title: 'Demande de ventilation budgetaire',
-      owner: 'Marie Kabongo',
-      dueDate: '09 Jan 2026',
-      delay: '8 jours',
-      status: 'En retard',
-      priority: 'Haute'
-    },
-    {
-      number: 'COREF-2025-0082',
-      title: 'Rapport d audit Q4',
-      owner: 'Direction des Ressources Humaines',
-      dueDate: '11 Jan 2026',
-      delay: '7 jours',
-      status: 'Relance envoyee',
-      priority: 'Moyenne'
-    },
-    {
-      number: 'COREF-2025-0078',
-      title: 'Note de service - Archivage',
-      owner: 'Jean Mukendi',
-      dueDate: '10 Jan 2026',
-      delay: '8 jours',
-      status: 'En retard',
-      priority: 'Moyenne'
-    },
-    {
-      number: 'COREF-2025-0069',
-      title: 'Contrat de prestation',
-      owner: 'Service Logistique',
-      dueDate: '16 Jan 2026',
-      delay: '2 jours',
-      status: 'En cours',
-      priority: 'Basse'
-    },
-    {
-      number: 'COREF-2025-0064',
-      title: 'Avis juridique - Convention',
-      owner: 'Service Juridique',
-      dueDate: '05 Jan 2026',
-      delay: '13 jours',
-      status: 'En retard',
-      priority: 'Haute'
-    }
-  ];
+  ngOnInit(): void {
+    this.http.get<RetardsResponse>(`${API_BASE_URL}/retards`).subscribe({
+      next: (data) => {
+        this.cards = data.cards;
+        this.topHolders = data.topHolders;
+        this.documents = data.documents;
+        this.isLoading = false;
+      },
+      error: () => {
+        this.isLoading = false;
+      }
+    });
+  }
 }
