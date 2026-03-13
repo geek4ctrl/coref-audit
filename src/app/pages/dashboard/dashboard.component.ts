@@ -121,8 +121,19 @@ interface DashboardDocument {
                       @if (doc.chiefInstruction) {
                         <div class="doc-meta">{{ doc.chiefInstruction }}</div>
                       }
+                      @if (doc.coordinatorComment && doc.category === 'retour-correction') {
+                        <div class="rejection-feedback">
+                          <span class="rejection-icon">🔄</span>
+                          <span class="rejection-text">{{ doc.coordinatorComment }}</span>
+                        </div>
+                      }
                     </td>
-                    <td><span [class]="'status-pill ' + doc.statusTone">{{ doc.status }}</span></td>
+                    <td>
+                      <span [class]="'status-pill ' + doc.statusTone">{{ doc.status }}</span>
+                      @if (doc.category === 'retour-correction') {
+                        <div class="rejection-badge">Rejeté par Coord.</div>
+                      }
+                    </td>
                     <td>{{ doc.lastAction }}</td>
                     <td>{{ doc.deadline || '—' }}</td>
                     <td>
@@ -133,8 +144,12 @@ interface DashboardDocument {
                         @if (doc.status === 'RECU') {
                           <button class="pilier-action-btn orange" (click)="pilierAction(doc.id, 'start-processing')" [disabled]="isBusy(doc.id)">Démarrer</button>
                         }
-                        @if (doc.status === 'EN_TRAITEMENT') {
+                        @if (doc.status === 'EN_TRAITEMENT' && doc.category !== 'retour-correction') {
                           <button class="pilier-action-btn green" (click)="pilierAction(doc.id, 'finalize')" [disabled]="isBusy(doc.id)">Finaliser</button>
+                        }
+                        @if (doc.category === 'retour-correction') {
+                          <button class="pilier-action-btn green" (click)="pilierAction(doc.id, 'finalize')" [disabled]="isBusy(doc.id)">Corriger & Finaliser</button>
+                          <button class="pilier-action-btn purple" (click)="resubmitToCoordinator(doc.id)" [disabled]="isBusy(doc.id)">Re-soumettre</button>
                         }
                         @if (doc.status === 'FINALISE') {
                           <button class="pilier-action-btn purple" (click)="pilierAction(doc.id, 'send-to-coordinator')" [disabled]="isBusy(doc.id)">Envoyer au Coord.</button>
@@ -1018,6 +1033,29 @@ interface DashboardDocument {
     .pilier-action-btn.green { background: #16a34a; }
     .pilier-action-btn.purple { background: #7c3aed; }
 
+    .rejection-feedback {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 6px;
+      padding: 6px 10px;
+      margin-top: 4px;
+    }
+    .rejection-icon { font-size: 14px; flex-shrink: 0; }
+    .rejection-text { font-size: 11px; color: #991b1b; line-height: 1.4; }
+    .rejection-badge {
+      display: inline-block;
+      background: #ef4444;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-top: 4px;
+    }
+
     .status-cards-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1363,11 +1401,12 @@ export class DashboardComponent implements OnInit {
   pilierTabs = [
     { key: 'a-receptionner', label: 'À réceptionner', icon: '☑' },
     { key: 'en-traitement', label: 'En traitement', icon: '▶' },
+    { key: 'retour-correction', label: 'Retour correction', icon: '🔄' },
     { key: 'chez-coordinateur', label: 'Chez Coordinateur', icon: '◐' },
     { key: 'termines', label: 'Terminés', icon: '✓' }
   ];
 
-  pilierDocuments: Array<DashboardDocument & { category: string; deadline?: string; chiefInstruction?: string }> = [];
+  pilierDocuments: Array<DashboardDocument & { category: string; deadline?: string; chiefInstruction?: string; coordinatorComment?: string }> = [];
 
   statusCards: StatusCard[] = [
     {
@@ -1668,7 +1707,7 @@ export class DashboardComponent implements OnInit {
 
   // ── Pilier mode ──
 
-  get filteredPilierDocuments(): Array<DashboardDocument & { category: string; deadline?: string; chiefInstruction?: string }> {
+  get filteredPilierDocuments(): Array<DashboardDocument & { category: string; deadline?: string; chiefInstruction?: string; coordinatorComment?: string }> {
     return this.pilierDocuments.filter((d) => d.category === this.pilierActiveTab);
   }
 
@@ -1678,6 +1717,29 @@ export class DashboardComponent implements OnInit {
 
   viewPilierDocument(documentId: number): void {
     this.router.navigate(['/documents'], { queryParams: { docId: documentId } });
+  }
+
+  resubmitToCoordinator(documentId: number): void {
+    if (this.pendingDocumentIds.has(documentId)) return;
+    this.pendingDocumentIds.add(documentId);
+
+    this.http.patch(`${API_BASE_URL}/pilier/documents/${documentId}/finalize`, {}).subscribe({
+      next: () => {
+        this.http.patch(`${API_BASE_URL}/pilier/documents/${documentId}/send-to-coordinator`, {}).subscribe({
+          next: () => {
+            this.pendingDocumentIds.delete(documentId);
+            this.loadPilierDashboard();
+          },
+          error: () => {
+            this.pendingDocumentIds.delete(documentId);
+            this.loadPilierDashboard();
+          }
+        });
+      },
+      error: () => {
+        this.pendingDocumentIds.delete(documentId);
+      }
+    });
   }
 
   pilierAction(documentId: number, action: string): void {
@@ -1725,6 +1787,15 @@ export class DashboardComponent implements OnInit {
         tabKey: 'en-traitement'
       },
       {
+        label: 'Retour correction',
+        count: 0,
+        countColor: '#dc2626',
+        icon: '🔄',
+        iconBg: '#fef2f2',
+        iconColor: '#dc2626',
+        tabKey: 'retour-correction'
+      },
+      {
         label: 'Chez Coordinateur',
         count: 0,
         countColor: '#7c3aed',
@@ -1732,15 +1803,6 @@ export class DashboardComponent implements OnInit {
         iconBg: '#f5f3ff',
         iconColor: '#7c3aed',
         tabKey: 'chez-coordinateur'
-      },
-      {
-        label: 'En retard',
-        count: 0,
-        countColor: '#dc2626',
-        icon: '⏱',
-        iconBg: '#fef2f2',
-        iconColor: '#dc2626',
-        tabKey: 'en-retard'
       }
     ];
 
@@ -1754,8 +1816,8 @@ export class DashboardComponent implements OnInit {
         if (response?.cards) {
           this.pilierCards[0].count = response.cards.toReceive ?? 0;
           this.pilierCards[1].count = response.cards.inProgress ?? 0;
-          this.pilierCards[2].count = response.cards.atCoordinator ?? 0;
-          this.pilierCards[3].count = response.cards.late ?? 0;
+          this.pilierCards[2].count = response.cards.rejected ?? 0;
+          this.pilierCards[3].count = response.cards.atCoordinator ?? 0;
         }
 
         if (response?.serviceName) {
@@ -1778,7 +1840,8 @@ export class DashboardComponent implements OnInit {
             delayTone: doc.delayTone || 'muted',
             category: doc.category || 'a-receptionner',
             deadline: doc.deadline ? this.formatDate(doc.deadline) : undefined,
-            chiefInstruction: doc.chiefInstruction || ''
+            chiefInstruction: doc.chiefInstruction || '',
+            coordinatorComment: doc.coordinatorComment || ''
           }));
         }
 
