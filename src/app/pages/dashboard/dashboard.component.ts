@@ -172,6 +172,105 @@ interface DashboardDocument {
             }
           </div>
         </div>
+      } @else if (isServiceMode) {
+        <div class="page-heading">
+          <div>
+            <h2 class="page-title pilier-title">Mes Documents - Service</h2>
+            <p class="page-subtitle">{{ serviceDisplayName }}</p>
+          </div>
+        </div>
+
+        <div class="pilier-status-cards">
+          @for (card of serviceCards; track card.label) {
+            <div
+              class="pilier-card"
+              [class.pilier-card-active]="serviceActiveTab === card.tabKey"
+              (click)="setServiceTab(card.tabKey)"
+            >
+              <div class="pilier-card-content">
+                <span class="pilier-card-label">{{ card.label }}</span>
+                <span class="pilier-card-count" [style.color]="card.countColor">{{ card.count }}</span>
+              </div>
+              <div class="pilier-card-icon" [style.background]="card.iconBg">
+                <span [style.color]="card.iconColor">{{ card.icon }}</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="pilier-table-card">
+          <div class="pilier-tabs">
+            @for (tab of serviceTabs; track tab.key) {
+              <button
+                class="pilier-tab"
+                [class.pilier-tab-active]="serviceActiveTab === tab.key"
+                (click)="setServiceTab(tab.key)"
+              >
+                <span class="pilier-tab-icon">{{ tab.icon }}</span>
+                {{ tab.label }}
+              </button>
+            }
+          </div>
+
+          <div class="table-wrapper">
+            <table class="documents-table">
+              <thead>
+                <tr>
+                  <th>Numéro</th>
+                  <th>Objet</th>
+                  <th>Statut</th>
+                  <th>Dernière action</th>
+                  <th>Échéance</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (doc of filteredServiceDocuments; track doc.id) {
+                  <tr>
+                    <td><div class="doc-number">{{ doc.number }}</div></td>
+                    <td>
+                      <div class="doc-title">{{ doc.object }}</div>
+                      @if (doc.chiefInstruction) {
+                        <div class="doc-meta">{{ doc.chiefInstruction }}</div>
+                      }
+                    </td>
+                    <td>
+                      <span [class]="'status-pill ' + doc.statusTone">{{ doc.status }}</span>
+                    </td>
+                    <td>{{ doc.lastAction }}</td>
+                    <td>{{ doc.deadline || '—' }}</td>
+                    <td>
+                      <div class="action-buttons">
+                        @if (doc.status === 'ENVOYE' || !doc.status) {
+                          <button class="pilier-action-btn blue" (click)="serviceAction(doc.id, 'acknowledge')" [disabled]="isBusy(doc.id)">Accuser réception</button>
+                        }
+                        @if (doc.status === 'RECU') {
+                          <button class="pilier-action-btn orange" (click)="serviceAction(doc.id, 'start-processing')" [disabled]="isBusy(doc.id)">Démarrer</button>
+                        }
+                        @if (doc.status === 'EN_TRAITEMENT') {
+                          <button class="pilier-action-btn green" (click)="serviceAction(doc.id, 'finalize')" [disabled]="isBusy(doc.id)">Finaliser</button>
+                        }
+                        @if (doc.status === 'FINALISE') {
+                          <button class="pilier-action-btn purple" (click)="serviceAction(doc.id, 'send-to-coordinator')" [disabled]="isBusy(doc.id)">Envoyer au Coord.</button>
+                        }
+                        @if (doc.status === 'ENVOYE_COORDINATEUR') {
+                          <span class="doc-meta">En attente validation</span>
+                        }
+                        <button class="icon-btn" aria-label="Voir" (click)="viewPilierDocument(doc.id)">👁️</button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+            @if (filteredServiceDocuments.length === 0) {
+              <div class="pilier-empty-state">
+                <div class="pilier-empty-icon">☑</div>
+                <p>Aucun document dans cette catégorie</p>
+              </div>
+            }
+          </div>
+        </div>
       } @else if (isSecretariatMode) {
         <div class="sec-page-heading">
           <div>
@@ -1366,6 +1465,7 @@ export class DashboardComponent implements OnInit {
   isAssistantMode = false;
   isChefMode = false;
   isPilierMode = false;
+  isServiceMode = false;
   isSecretariatMode = false;
   isLoading = false;
   pendingDocumentIds = new Set<number>();
@@ -1378,6 +1478,34 @@ export class DashboardComponent implements OnInit {
 
   // Secretariat mode properties
   secretariatDisplayName = '';
+
+  // Service mode properties
+  serviceDisplayName = '';
+  serviceActiveTab = 'a-receptionner';
+  serviceCards: Array<{
+    label: string;
+    count: number;
+    countColor: string;
+    icon: string;
+    iconBg: string;
+    iconColor: string;
+    tabKey: string;
+  }> = [];
+  serviceTabs = [
+    { key: 'a-receptionner', icon: '☑', label: 'À réceptionner' },
+    { key: 'en-traitement', icon: '▶', label: 'En traitement' },
+    { key: 'chez-coordinateur', icon: '○', label: 'Chez Coordinateur' },
+    { key: 'termines', icon: '☑', label: 'Terminés' }
+  ];
+  serviceDocuments: Array<DashboardDocument & { category: string; deadline?: string; chiefInstruction?: string }> = [];
+
+  get filteredServiceDocuments(): Array<DashboardDocument & { category: string; deadline?: string; chiefInstruction?: string }> {
+    return this.serviceDocuments.filter((d) => d.category === this.serviceActiveTab);
+  }
+
+  setServiceTab(tab: string): void {
+    this.serviceActiveTab = tab;
+  }
   secretariatCards: Array<{
     label: string;
     count: number;
@@ -1496,6 +1624,7 @@ export class DashboardComponent implements OnInit {
     this.isAssistantMode = role === 'ASSISTANT_CHEF';
     this.isChefMode = role === 'CHEF_SG';
     this.isPilierMode = role === 'PILIER';
+    this.isServiceMode = role === 'SERVICE_INTERNE';
     this.isSecretariatMode = role === 'SECRETARIAT';
     const isChefSgMode = role === 'CHEF_SG';
     this.assistantDisplayName = this.authService.user()?.name || 'Assistante';
@@ -1508,6 +1637,11 @@ export class DashboardComponent implements OnInit {
 
     if (this.isPilierMode) {
       this.initPilierDashboard();
+      return;
+    }
+
+    if (this.isServiceMode) {
+      this.initServiceDashboard();
       return;
     }
 
@@ -2073,6 +2207,77 @@ export class DashboardComponent implements OnInit {
       next: () => {
         this.pendingDocumentIds.delete(documentId);
         this.loadSecretariatDashboard();
+      },
+      error: () => {
+        this.pendingDocumentIds.delete(documentId);
+      }
+    });
+  }
+
+  // ── SERVICE INTERNE DASHBOARD ──
+
+  private initServiceDashboard(): void {
+    this.serviceDisplayName = this.authService.user()?.name || 'Service Administratif';
+
+    this.serviceCards = [
+      { label: 'À réceptionner', count: 0, countColor: '#1e293b', icon: '☑', iconBg: '#eff6ff', iconColor: '#3b82f6', tabKey: 'a-receptionner' },
+      { label: 'En traitement', count: 0, countColor: '#1e293b', icon: '▶', iconBg: '#fff7ed', iconColor: '#f97316', tabKey: 'en-traitement' },
+      { label: 'Chez Coordinateur', count: 0, countColor: '#1e293b', icon: '○', iconBg: '#f5f3ff', iconColor: '#7c3aed', tabKey: 'chez-coordinateur' },
+      { label: 'En retard', count: 0, countColor: '#ef4444', icon: '⏱', iconBg: '#fef2f2', iconColor: '#ef4444', tabKey: 'en-traitement' }
+    ];
+
+    this.loadServiceDashboard();
+  }
+
+  private loadServiceDashboard(): void {
+    this.isLoading = true;
+    this.http.get<any>(`${API_BASE_URL}/service/dashboard`).subscribe({
+      next: (response) => {
+        if (response?.cards) {
+          this.serviceCards[0].count = response.cards.toReceive ?? 0;
+          this.serviceCards[1].count = response.cards.inProgress ?? 0;
+          this.serviceCards[2].count = response.cards.atCoordinator ?? 0;
+          this.serviceCards[3].count = response.cards.late ?? 0;
+        }
+
+        this.serviceDisplayName = response.serviceName || this.serviceDisplayName;
+
+        if (response?.documents) {
+          this.serviceDocuments = response.documents.map((doc: any) => ({
+            id: doc.id,
+            number: doc.number,
+            object: doc.object || doc.subject,
+            type: doc.type || '',
+            owner: doc.owner || doc.sender || '',
+            ownerRole: doc.ownerRole || '',
+            status: doc.status,
+            statusTone: doc.statusTone || 'info',
+            lastAction: this.formatDate(doc.lastActionAt || doc.createdAt || ''),
+            lastActionNote: doc.lastActionNote || '',
+            delay: doc.delay || '',
+            delayTone: doc.delayTone || 'muted',
+            category: doc.category || 'a-receptionner',
+            deadline: doc.deadline ? this.formatDate(doc.deadline) : undefined,
+            chiefInstruction: doc.chiefInstruction || ''
+          }));
+        }
+
+        this.isLoading = false;
+      },
+      error: () => {
+        this.isLoading = false;
+      }
+    });
+  }
+
+  serviceAction(documentId: number, action: string): void {
+    if (this.pendingDocumentIds.has(documentId)) return;
+    this.pendingDocumentIds.add(documentId);
+
+    this.http.patch(`${API_BASE_URL}/service/documents/${documentId}/${action}`, {}).subscribe({
+      next: () => {
+        this.pendingDocumentIds.delete(documentId);
+        this.loadServiceDashboard();
       },
       error: () => {
         this.pendingDocumentIds.delete(documentId);
