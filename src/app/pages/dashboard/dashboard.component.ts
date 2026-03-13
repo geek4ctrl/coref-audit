@@ -11,6 +11,7 @@ interface AssistantDashboardResponse {
     toProcess: number;
     inProgress: number;
     done: number;
+    urgent: number;
   };
   quickFilters: {
     all: number;
@@ -21,6 +22,7 @@ interface AssistantDashboardResponse {
     delayed: number;
     blocked: number;
     treatedThisWeek: number;
+    urgent: number;
   };
   documents: AssistantDashboardDocument[];
 }
@@ -38,6 +40,7 @@ interface AssistantDashboardDocument {
   lastActionNote: string;
   delay: string;
   delayTone: 'danger' | 'muted';
+  priority: string;
 }
 
 interface DashboardDocument {
@@ -53,6 +56,7 @@ interface DashboardDocument {
   lastActionNote: string;
   delay: string;
   delayTone: 'danger' | 'muted';
+  priority?: string;
 }
 
 @Component({
@@ -106,6 +110,7 @@ interface DashboardDocument {
                 <tr>
                   <th>Numéro</th>
                   <th>Objet</th>
+                  <th>Priorité</th>
                   <th>Statut</th>
                   <th>Dernière action</th>
                   <th>Échéance</th>
@@ -114,7 +119,7 @@ interface DashboardDocument {
               </thead>
               <tbody>
                 @for (doc of filteredPilierDocuments; track doc.id) {
-                  <tr>
+                  <tr [class.urgent-row]="doc.priority === 'Haute' || doc.priority === 'Urgente'">
                     <td><div class="doc-number">{{ doc.number }}</div></td>
                     <td>
                       <div class="doc-title">{{ doc.object }}</div>
@@ -127,6 +132,9 @@ interface DashboardDocument {
                           <span class="rejection-text">{{ doc.coordinatorComment }}</span>
                         </div>
                       }
+                    </td>
+                    <td>
+                      <span [class]="'priority-pill ' + getPriorityTone(doc.priority)">{{ doc.priority || '—' }}</span>
                     </td>
                     <td>
                       <span [class]="'status-pill ' + doc.statusTone">{{ doc.status }}</span>
@@ -218,6 +226,7 @@ interface DashboardDocument {
                 <tr>
                   <th>Numéro</th>
                   <th>Objet</th>
+                  <th>Priorité</th>
                   <th>Statut</th>
                   <th>Dernière action</th>
                   <th>Échéance</th>
@@ -226,13 +235,16 @@ interface DashboardDocument {
               </thead>
               <tbody>
                 @for (doc of filteredServiceDocuments; track doc.id) {
-                  <tr>
+                  <tr [class.urgent-row]="doc.priority === 'Haute' || doc.priority === 'Urgente'">
                     <td><div class="doc-number">{{ doc.number }}</div></td>
                     <td>
                       <div class="doc-title">{{ doc.object }}</div>
                       @if (doc.chiefInstruction) {
                         <div class="doc-meta">{{ doc.chiefInstruction }}</div>
                       }
+                    </td>
+                    <td>
+                      <span [class]="'priority-pill ' + getPriorityTone(doc.priority)">{{ doc.priority || '—' }}</span>
                     </td>
                     <td>
                       <span [class]="'status-pill ' + doc.statusTone">{{ doc.status }}</span>
@@ -308,6 +320,7 @@ interface DashboardDocument {
                     <th>Numéro</th>
                     <th>Objet</th>
                     <th>Expéditeur</th>
+                    <th>Priorité</th>
                     <th>Statut</th>
                     <th>Date réception</th>
                     <th>Actions</th>
@@ -315,10 +328,11 @@ interface DashboardDocument {
                 </thead>
                 <tbody>
                   @for (doc of secretariatDocuments; track doc.id) {
-                    <tr>
+                    <tr [class.urgent-row]="doc.priority === 'Haute' || doc.priority === 'Urgente'">
                       <td><div class="doc-number">{{ doc.number }}</div></td>
                       <td><div class="doc-title">{{ doc.object }}</div></td>
                       <td>{{ doc.owner }}</td>
+                      <td><span [class]="'priority-pill ' + getPriorityTone(doc.priority)">{{ doc.priority || '—' }}</span></td>
                       <td><span [class]="'status-pill ' + doc.statusTone">{{ doc.status }}</span></td>
                       <td>{{ doc.lastAction }}</td>
                       <td>
@@ -355,6 +369,7 @@ interface DashboardDocument {
                     <th>Numéro</th>
                     <th>Objet</th>
                     <th>Expéditeur</th>
+                    <th>Priorité</th>
                     <th>Statut</th>
                     <th>Formaté le</th>
                     <th>Actions</th>
@@ -362,10 +377,11 @@ interface DashboardDocument {
                 </thead>
                 <tbody>
                   @for (doc of secretariatFormattedDocuments; track doc.id) {
-                    <tr>
+                    <tr [class.urgent-row]="doc.priority === 'Haute' || doc.priority === 'Urgente'">
                       <td><div class="doc-number">{{ doc.number }}</div></td>
                       <td><div class="doc-title">{{ doc.object }}</div></td>
                       <td>{{ doc.owner }}</td>
+                      <td><span [class]="'priority-pill ' + getPriorityTone(doc.priority)">{{ doc.priority || '—' }}</span></td>
                       <td><span class="status-pill success">{{ doc.status }}</span></td>
                       <td>{{ doc.lastAction }}</td>
                       <td>
@@ -457,7 +473,7 @@ interface DashboardDocument {
           @for (doc of recentAssistantDocuments; track doc.id) {
             <div class="assistant-doc-row">
               <div>
-                <div class="assistant-doc-meta">{{ doc.number }} <span class="assistant-priority-pill">{{ doc.delay === 'En retard' ? 'Urgent' : 'Normal' }}</span></div>
+                <div class="assistant-doc-meta">{{ doc.number }} <span [class]="'assistant-priority-pill ' + getPriorityTone(doc.priority)">{{ doc.priority || 'Normale' }}</span></div>
                 <div class="assistant-doc-subject">{{ doc.object }}</div>
                 <div class="assistant-doc-footer">Expéditeur: {{ doc.owner }} • {{ doc.lastAction }}</div>
               </div>
@@ -511,6 +527,7 @@ interface DashboardDocument {
                   <th>Numéro</th>
                   <th>Objet</th>
                   <th>Chez qui</th>
+                  <th>Priorité</th>
                   <th>Statut</th>
                   <th>Dernière action</th>
                   <th>Retard</th>
@@ -519,7 +536,7 @@ interface DashboardDocument {
               </thead>
               <tbody>
                 @for (doc of documents; track doc.number) {
-                  <tr>
+                  <tr [class.urgent-row]="doc.priority === 'Haute' || doc.priority === 'Urgente'">
                     <td>
                       <div class="doc-number">{{ doc.number }}</div>
                     </td>
@@ -530,6 +547,9 @@ interface DashboardDocument {
                     <td>
                       <div class="doc-owner">{{ doc.owner }}</div>
                       <div class="doc-meta">{{ doc.ownerRole }}</div>
+                    </td>
+                    <td>
+                      <span [class]="'priority-pill ' + getPriorityTone(doc.priority)">{{ doc.priority || 'Normale' }}</span>
                     </td>
                     <td>
                       <span [class]="'status-pill ' + doc.statusTone">{{ doc.status }}</span>
@@ -792,14 +812,97 @@ interface DashboardDocument {
 
     .assistant-priority-pill {
       margin-left: 8px;
-      background: #f1f5f9;
-      color: #334155;
-      border: 1px solid #cbd5e1;
       border-radius: 999px;
       padding: 1px 8px;
       font-size: 11px;
       text-transform: none;
       letter-spacing: 0;
+      font-weight: 600;
+    }
+
+    .assistant-priority-pill.priority-urgente {
+      background: #fef2f2;
+      color: #dc2626;
+      border: 1px solid #fca5a5;
+      animation: urgentPulse 2s ease-in-out infinite;
+    }
+
+    .assistant-priority-pill.priority-haute {
+      background: #fff7ed;
+      color: #ea580c;
+      border: 1px solid #fdba74;
+    }
+
+    .assistant-priority-pill.priority-normale {
+      background: #f1f5f9;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+    }
+
+    .assistant-priority-pill.priority-basse {
+      background: #f0fdf4;
+      color: #16a34a;
+      border: 1px solid #86efac;
+    }
+
+    .priority-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .priority-pill.priority-urgente {
+      background: #fef2f2;
+      color: #dc2626;
+      border: 1px solid #fca5a5;
+      animation: urgentPulse 2s ease-in-out infinite;
+    }
+
+    .priority-pill.priority-urgente::before {
+      content: '🔴';
+      font-size: 8px;
+    }
+
+    .priority-pill.priority-haute {
+      background: #fff7ed;
+      color: #ea580c;
+      border: 1px solid #fdba74;
+    }
+
+    .priority-pill.priority-haute::before {
+      content: '🟠';
+      font-size: 8px;
+    }
+
+    .priority-pill.priority-normale {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+    }
+
+    .priority-pill.priority-basse {
+      background: #f0fdf4;
+      color: #16a34a;
+      border: 1px solid #86efac;
+    }
+
+    .urgent-row {
+      background: #fef2f2 !important;
+      border-left: 3px solid #dc2626;
+    }
+
+    .urgent-row:hover {
+      background: #fee2e2 !important;
+    }
+
+    @keyframes urgentPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
     }
 
     .assistant-doc-subject {
@@ -1802,7 +1905,7 @@ export class DashboardComponent implements OnInit {
       },
       {
         title: 'Documents urgents',
-        count: this.quickFilters.find((item) => item.label === 'En retard')?.count ?? 0,
+        count: this.quickFilters.find((item) => item.label === 'Urgents')?.count ?? 0,
         note: 'Nécessitent une action rapide',
         icon: '!',
         iconTone: 'red',
@@ -2019,7 +2122,8 @@ export class DashboardComponent implements OnInit {
             category: doc.category || 'a-receptionner',
             deadline: doc.deadline ? this.formatDate(doc.deadline) : undefined,
             chiefInstruction: doc.chiefInstruction || '',
-            coordinatorComment: doc.coordinatorComment || ''
+            coordinatorComment: doc.coordinatorComment || '',
+            priority: doc.priority || doc.chiefPriority || 'Normale'
           }));
         }
 
@@ -2074,6 +2178,7 @@ export class DashboardComponent implements OnInit {
             { label: 'Destinés à moi', count: response.quickFilters.assignedToMe },
             { label: 'Envoyés par moi', count: response.quickFilters.sentByMe },
             { label: 'Sans accusé réception', count: response.quickFilters.noAck },
+            { label: 'Urgents', count: response.quickFilters.urgent },
             { label: 'En retard', count: response.quickFilters.delayed },
             { label: 'Bloqués', count: response.quickFilters.blocked },
             { label: 'Traités cette semaine', count: response.quickFilters.treatedThisWeek }
@@ -2121,7 +2226,8 @@ export class DashboardComponent implements OnInit {
         this.documents = response.documents.map((document) => ({
           ...document,
           lastAction: this.formatDate(document.lastActionAt),
-          lastActionNote: document.lastActionNote
+          lastActionNote: document.lastActionNote,
+          priority: document.priority || 'Normale'
         }));
         this.isLoading = false;
       },
@@ -2194,7 +2300,8 @@ export class DashboardComponent implements OnInit {
     }
 
     const priority = (window.prompt('Définir priorité (Basse, Normale, Haute, Urgente):', 'Normale') || '').trim();
-    const slaInput = (window.prompt('Fixer délai (SLA) en jours:', '7') || '').trim();
+    const defaultSla = priority === 'Urgente' ? '1' : priority === 'Haute' ? '2' : '7';
+    const slaInput = (window.prompt(`Fixer délai (SLA) en jours:`, defaultSla) || '').trim();
     const instruction = (window.prompt('Ajouter instructions (optionnel):', '') || '').trim();
 
     const slaDays = Number.parseInt(slaInput, 10);
@@ -2316,7 +2423,8 @@ export class DashboardComponent implements OnInit {
             delayTone: doc.delayTone || 'muted',
             category: doc.category || 'a-receptionner',
             deadline: doc.deadline ? this.formatDate(doc.deadline) : undefined,
-            chiefInstruction: doc.chiefInstruction || ''
+            chiefInstruction: doc.chiefInstruction || '',
+            priority: doc.priority || doc.chiefPriority || 'Normale'
           }));
         }
 
@@ -2380,7 +2488,8 @@ export class DashboardComponent implements OnInit {
             lastAction: this.formatDate(doc.lastActionAt || doc.receivedDate || ''),
             lastActionNote: doc.lastActionNote || '',
             delay: doc.delay || '',
-            delayTone: doc.delayTone || 'muted'
+            delayTone: doc.delayTone || 'muted',
+            priority: doc.priority || 'Normale'
           }));
         }
 
@@ -2397,7 +2506,8 @@ export class DashboardComponent implements OnInit {
             lastAction: this.formatDate(doc.lastActionAt || doc.receivedDate || ''),
             lastActionNote: '',
             delay: '',
-            delayTone: 'muted'
+            delayTone: 'muted',
+            priority: doc.priority || 'Normale'
           }));
         }
 
@@ -2415,5 +2525,14 @@ export class DashboardComponent implements OnInit {
       return '—';
     }
     return new Intl.DateTimeFormat('fr-FR').format(date);
+  }
+
+  getPriorityTone(priority: string | undefined): string {
+    switch (priority) {
+      case 'Urgente': return 'priority-urgente';
+      case 'Haute': return 'priority-haute';
+      case 'Basse': return 'priority-basse';
+      default: return 'priority-normale';
+    }
   }
 }
