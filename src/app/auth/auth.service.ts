@@ -80,7 +80,7 @@ export class AuthService {
       case 'SERVICE_INTERNE':
         return '/dashboard';
       case 'PILIER_COORD':
-        return '/documents';
+        return '/dashboard';
       case 'AUDITEUR':
         return '/dashboard';
       default:
