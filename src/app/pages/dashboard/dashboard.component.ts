@@ -157,6 +157,88 @@ interface DashboardDocument {
             }
           </div>
         </div>
+      } @else if (isSecretariatMode) {
+        <div class="sec-page-heading">
+          <div>
+            <h2 class="sec-page-title">Dashboard Secrétariat</h2>
+            <p class="sec-page-subtitle">Bienvenue {{ secretariatDisplayName }} - Mise en forme administrative</p>
+          </div>
+        </div>
+
+        <div class="sec-kpi-grid">
+          @for (card of secretariatCards; track card.label) {
+            <div class="sec-kpi-card" [style.border-color]="card.borderColor">
+              <div class="sec-kpi-icon" [style.background]="card.iconBg">
+                <span [style.color]="card.iconColor">{{ card.icon }}</span>
+              </div>
+              <div class="sec-kpi-count">{{ card.count }}</div>
+              <div class="sec-kpi-label">{{ card.label }}</div>
+            </div>
+          }
+        </div>
+
+        <div class="sec-panel">
+          <div class="sec-panel-header">
+            <div class="sec-panel-title">
+              <span class="sec-panel-title-icon">⏱</span>
+              <strong>Documents à formater</strong>
+            </div>
+            <button class="sec-see-all" (click)="navigateTo('/documents')">Voir tout →</button>
+          </div>
+          @if (secretariatDocuments.length > 0) {
+            <div class="table-wrapper">
+              <table class="documents-table">
+                <thead>
+                  <tr>
+                    <th>Numéro</th>
+                    <th>Objet</th>
+                    <th>Expéditeur</th>
+                    <th>Statut</th>
+                    <th>Date réception</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (doc of secretariatDocuments; track doc.id) {
+                    <tr>
+                      <td><div class="doc-number">{{ doc.number }}</div></td>
+                      <td><div class="doc-title">{{ doc.object }}</div></td>
+                      <td>{{ doc.owner }}</td>
+                      <td><span [class]="'status-pill ' + doc.statusTone">{{ doc.status }}</span></td>
+                      <td>{{ doc.lastAction }}</td>
+                      <td>
+                        <div class="action-buttons">
+                          <button class="pilier-action-btn blue" (click)="secretariatFormat(doc.id)" [disabled]="isBusy(doc.id)">Formater</button>
+                          <button class="icon-btn" aria-label="Voir" (click)="navigateTo('/documents')">👁️</button>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <div class="sec-empty-state">
+              <div class="sec-empty-icon">📋</div>
+              <p>Aucun document à formater pour le moment</p>
+            </div>
+          }
+        </div>
+
+        <div class="sec-mission-card">
+          <div class="sec-mission-title">
+            <span>📄</span>
+            <strong>Mission du Secrétariat</strong>
+          </div>
+          <div class="sec-mission-item">
+            <span class="sec-mission-check">✔</span>
+            Recevoir les documents techniques des Piliers
+          </div>
+          <div class="sec-mission-item">
+            <span class="sec-mission-check">✔</span>
+            Effectuer la mise en forme administrative officielle
+          </div>
+        </div>
       } @else if (isAssistantMode) {
         <div class="assistant-page-heading">
           <div>
@@ -608,6 +690,179 @@ interface DashboardDocument {
       font-size: 22px;
       font-weight: 800;
       color: #0b2f5c;
+    }
+
+    /* ── Secrétariat mode ── */
+
+    .sec-page-heading {
+      display: flex;
+      align-items: flex-start;
+    }
+
+    .sec-page-title {
+      margin: 0 0 4px;
+      font-size: 22px;
+      font-weight: 800;
+      color: #0b2f5c;
+    }
+
+    .sec-page-subtitle {
+      margin: 0;
+      color: #475569;
+      font-size: 13px;
+    }
+
+    .sec-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .sec-kpi-card {
+      background: #fff;
+      border: 2px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .sec-kpi-card:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.1);
+    }
+
+    .sec-kpi-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .sec-kpi-count {
+      font-size: 28px;
+      font-weight: 800;
+      color: #0b2f5c;
+      line-height: 1;
+    }
+
+    .sec-kpi-label {
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .sec-panel {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 18px 20px;
+      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.07);
+    }
+
+    .sec-panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .sec-panel-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+      color: #0b2f5c;
+    }
+
+    .sec-panel-title-icon {
+      font-size: 18px;
+    }
+
+    .sec-see-all {
+      border: none;
+      background: transparent;
+      color: #0b2f5c;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .sec-see-all:hover {
+      text-decoration: underline;
+    }
+
+    .sec-empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 20px;
+      color: #94a3b8;
+    }
+
+    .sec-empty-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+      opacity: 0.5;
+    }
+
+    .sec-empty-state p {
+      font-size: 14px;
+      color: #94a3b8;
+      margin: 0;
+    }
+
+    .sec-mission-card {
+      background: #fffbeb;
+      border: 2px solid #fde68a;
+      border-radius: 14px;
+      padding: 20px;
+    }
+
+    .sec-mission-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+      color: #0b2f5c;
+      margin-bottom: 14px;
+    }
+
+    .sec-mission-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #334155;
+      padding: 4px 0;
+    }
+
+    .sec-mission-check {
+      color: #16a34a;
+      font-size: 14px;
+    }
+
+    @media (max-width: 1024px) {
+      .sec-kpi-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 768px) {
+      .sec-kpi-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .sec-panel-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
     }
 
     .pilier-status-cards {
@@ -1073,6 +1328,7 @@ export class DashboardComponent implements OnInit {
   isAssistantMode = false;
   isChefMode = false;
   isPilierMode = false;
+  isSecretariatMode = false;
   isLoading = false;
   pendingDocumentIds = new Set<number>();
   assistantDisplayName = 'Assistante';
@@ -1081,6 +1337,18 @@ export class DashboardComponent implements OnInit {
   // Pilier mode properties
   pilierServiceName = '';
   pilierActiveTab = 'a-receptionner';
+
+  // Secretariat mode properties
+  secretariatDisplayName = '';
+  secretariatCards: Array<{
+    label: string;
+    count: number;
+    borderColor: string;
+    icon: string;
+    iconBg: string;
+    iconColor: string;
+  }> = [];
+  secretariatDocuments: Array<DashboardDocument> = [];
 
   pilierCards: Array<{
     label: string;
@@ -1189,6 +1457,7 @@ export class DashboardComponent implements OnInit {
     this.isAssistantMode = role === 'ASSISTANT_CHEF';
     this.isChefMode = role === 'CHEF_SG';
     this.isPilierMode = role === 'PILIER';
+    this.isSecretariatMode = role === 'SECRETARIAT';
     const isChefSgMode = role === 'CHEF_SG';
     this.assistantDisplayName = this.authService.user()?.name || 'Assistante';
     this.todayLabel = new Intl.DateTimeFormat('fr-FR', {
@@ -1200,6 +1469,11 @@ export class DashboardComponent implements OnInit {
 
     if (this.isPilierMode) {
       this.initPilierDashboard();
+      return;
+    }
+
+    if (this.isSecretariatMode) {
+      this.initSecretariatDashboard();
       return;
     }
 
@@ -1723,6 +1997,71 @@ export class DashboardComponent implements OnInit {
       },
       error: () => {
         this.pendingDocumentIds.delete(documentId);
+      }
+    });
+  }
+
+  // ── Secrétariat mode ──
+
+  secretariatFormat(documentId: number): void {
+    if (this.pendingDocumentIds.has(documentId)) return;
+    this.pendingDocumentIds.add(documentId);
+    this.http.patch(`${API_BASE_URL}/secretariat/documents/${documentId}/format`, {}).subscribe({
+      next: () => {
+        this.pendingDocumentIds.delete(documentId);
+        this.loadSecretariatDashboard();
+      },
+      error: () => {
+        this.pendingDocumentIds.delete(documentId);
+      }
+    });
+  }
+
+  private initSecretariatDashboard(): void {
+    this.secretariatDisplayName = this.authService.user()?.name || 'Secrétariat';
+
+    this.secretariatCards = [
+      { label: 'À formater', count: 0, borderColor: '#fca5a5', icon: '⏱', iconBg: '#fff7ed', iconColor: '#f97316' },
+      { label: 'Formatés aujourd\'hui', count: 0, borderColor: '#86efac', icon: '✔', iconBg: '#f0fdf4', iconColor: '#16a34a' },
+      { label: 'Envoyés à l\'Assistante', count: 0, borderColor: '#93c5fd', icon: '✈', iconBg: '#eff6ff', iconColor: '#2563eb' },
+      { label: 'Retour correction', count: 0, borderColor: '#c4b5fd', icon: '!', iconBg: '#f5f3ff', iconColor: '#7c3aed' }
+    ];
+
+    this.loadSecretariatDashboard();
+  }
+
+  private loadSecretariatDashboard(): void {
+    this.isLoading = true;
+    this.http.get<any>(`${API_BASE_URL}/secretariat/dashboard`).subscribe({
+      next: (response) => {
+        if (response?.cards) {
+          this.secretariatCards[0].count = response.cards.toFormat ?? 0;
+          this.secretariatCards[1].count = response.cards.formattedToday ?? 0;
+          this.secretariatCards[2].count = response.cards.sentToAssistant ?? 0;
+          this.secretariatCards[3].count = response.cards.returnedForCorrection ?? 0;
+        }
+
+        if (response?.documents) {
+          this.secretariatDocuments = response.documents.map((doc: any) => ({
+            id: doc.id,
+            number: doc.number,
+            object: doc.object || doc.subject,
+            type: doc.type || '',
+            owner: doc.owner || doc.sender || '',
+            ownerRole: doc.ownerRole || '',
+            status: doc.status,
+            statusTone: doc.statusTone || 'info',
+            lastAction: this.formatDate(doc.lastActionAt || doc.receivedDate || ''),
+            lastActionNote: doc.lastActionNote || '',
+            delay: doc.delay || '',
+            delayTone: doc.delayTone || 'muted'
+          }));
+        }
+
+        this.isLoading = false;
+      },
+      error: () => {
+        this.isLoading = false;
       }
     });
   }
