@@ -533,15 +533,16 @@ export class NouveauDocumentComponent {
 
     const payload = {
       documentType: this.form.category,
-      receivedDate: new Date().toISOString().split('T')[0],
       sender: this.form.sender,
       subject: this.form.subject,
       category: this.form.category,
       confidentiality: this.form.confidentiality,
-      observations: this.form.description || undefined
+      priority: this.form.priority === 'Normal' ? 'Normale' : this.form.priority,
+      observations: this.form.description || undefined,
+      slaDays: this.form.slaDays
     };
 
-    this.http.post(`${API_BASE_URL}/reception/documents`, payload).subscribe({
+    this.http.post(`${API_BASE_URL}/documents`, payload).subscribe({
       next: () => {
         this.isSubmitting = false;
         this.router.navigate(['/documents']);
