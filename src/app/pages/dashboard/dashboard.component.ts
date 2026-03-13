@@ -127,9 +127,12 @@ interface DashboardDocument {
                         <div class="doc-meta">{{ doc.chiefInstruction }}</div>
                       }
                       @if (doc.coordinatorComment && doc.category === 'retour-correction') {
-                        <div class="rejection-feedback">
-                          <span class="rejection-icon">🔄</span>
-                          <span class="rejection-text">{{ doc.coordinatorComment }}</span>
+                        <div class="rejection-feedback-card">
+                          <div class="rejection-feedback-header">
+                            <span class="rejection-icon">⚠️</span>
+                            <strong>Feedback du Coordinateur — Modifications requises</strong>
+                          </div>
+                          <div class="rejection-feedback-body">{{ doc.coordinatorComment }}</div>
                         </div>
                       }
                     </td>
@@ -173,6 +176,116 @@ interface DashboardDocument {
               </tbody>
             </table>
             @if (filteredPilierDocuments.length === 0) {
+              <div class="pilier-empty-state">
+                <div class="pilier-empty-icon">☑</div>
+                <p>Aucun document dans cette catégorie</p>
+              </div>
+            }
+          </div>
+        </div>
+      } @else if (isCoordinatorMode) {
+        <div class="page-heading">
+          <div>
+            <h2 class="page-title pilier-title">Validation Coordinateur</h2>
+            <p class="page-subtitle">{{ coordinatorDisplayName }}</p>
+          </div>
+        </div>
+
+        <div class="pilier-status-cards">
+          @for (card of coordinatorCards; track card.label) {
+            <div
+              class="pilier-card"
+              [class.pilier-card-active]="coordinatorActiveTab === card.tabKey"
+              (click)="setCoordinatorTab(card.tabKey)"
+            >
+              <div class="pilier-card-content">
+                <span class="pilier-card-label">{{ card.label }}</span>
+                <span class="pilier-card-count" [style.color]="card.countColor">{{ card.count }}</span>
+              </div>
+              <div class="pilier-card-icon" [style.background]="card.iconBg">
+                <span [style.color]="card.iconColor">{{ card.icon }}</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="pilier-table-card">
+          <div class="pilier-tabs">
+            @for (tab of coordinatorTabs; track tab.key) {
+              <button
+                class="pilier-tab"
+                [class.pilier-tab-active]="coordinatorActiveTab === tab.key"
+                (click)="setCoordinatorTab(tab.key)"
+              >
+                <span class="pilier-tab-icon">{{ tab.icon }}</span>
+                {{ tab.label }}
+              </button>
+            }
+          </div>
+
+          <div class="table-wrapper">
+            <table class="documents-table">
+              <thead>
+                <tr>
+                  <th>Numéro</th>
+                  <th>Objet</th>
+                  <th>Priorité</th>
+                  <th>Expéditeur</th>
+                  <th>Statut</th>
+                  <th>Soumis le</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (doc of filteredCoordinatorDocuments; track doc.id) {
+                  <tr [class.urgent-row]="doc.priority === 'Haute' || doc.priority === 'Urgente'">
+                    <td><div class="doc-number">{{ doc.number }}</div></td>
+                    <td>
+                      <div class="doc-title">{{ doc.object }}</div>
+                      @if (doc.chiefInstruction) {
+                        <div class="doc-meta">{{ doc.chiefInstruction }}</div>
+                      }
+                      @if (doc.coordinatorComment && doc.category === 'rejetes') {
+                        <div class="rejection-feedback">
+                          <span class="rejection-icon">🔄</span>
+                          <span class="rejection-text">Mon feedback: {{ doc.coordinatorComment }}</span>
+                        </div>
+                      }
+                    </td>
+                    <td>
+                      <span [class]="'priority-pill ' + getPriorityTone(doc.priority)">{{ doc.priority || '—' }}</span>
+                    </td>
+                    <td>{{ doc.sender || '—' }}</td>
+                    <td>
+                      @if (doc.category === 'a-valider') {
+                        <span class="status-pill info">En attente</span>
+                      } @else if (doc.category === 'rejetes') {
+                        <span class="status-pill warning">Rejeté</span>
+                      } @else {
+                        <span class="status-pill success">Validé</span>
+                      }
+                    </td>
+                    <td>{{ doc.lastAction }}</td>
+                    <td>
+                      <div class="action-buttons">
+                        @if (doc.category === 'a-valider') {
+                          <button class="pilier-action-btn green" (click)="coordinatorValidate(doc.id)" [disabled]="isBusy(doc.id)">✔ Valider</button>
+                          <button class="pilier-action-btn red" (click)="coordinatorReject(doc.id)" [disabled]="isBusy(doc.id)">✘ Rejeter</button>
+                        }
+                        @if (doc.category === 'valides') {
+                          <span class="doc-meta">✔ Validé</span>
+                        }
+                        @if (doc.category === 'rejetes') {
+                          <span class="doc-meta">En correction</span>
+                        }
+                        <button class="icon-btn" aria-label="Voir" (click)="viewPilierDocument(doc.id)">👁️</button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+            @if (filteredCoordinatorDocuments.length === 0) {
               <div class="pilier-empty-state">
                 <div class="pilier-empty-icon">☑</div>
                 <p>Aucun document dans cette catégorie</p>
@@ -1290,6 +1403,32 @@ interface DashboardDocument {
     }
     .rejection-icon { font-size: 14px; flex-shrink: 0; }
     .rejection-text { font-size: 11px; color: #991b1b; line-height: 1.4; }
+
+    .rejection-feedback-card {
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      border-left: 3px solid #dc2626;
+      border-radius: 6px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+    .rejection-feedback-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #fee2e2;
+      padding: 5px 10px;
+      font-size: 11px;
+      color: #991b1b;
+    }
+    .rejection-feedback-body {
+      padding: 8px 10px;
+      font-size: 11px;
+      color: #7f1d1d;
+      line-height: 1.5;
+      white-space: pre-line;
+    }
+
     .rejection-badge {
       display: inline-block;
       background: #ef4444;
@@ -1300,6 +1439,8 @@ interface DashboardDocument {
       border-radius: 10px;
       margin-top: 4px;
     }
+
+    .pilier-action-btn.red { background: #dc2626; }
 
     .status-cards-grid {
       display: grid;
@@ -1613,6 +1754,7 @@ export class DashboardComponent implements OnInit {
   isPilierMode = false;
   isServiceMode = false;
   isSecretariatMode = false;
+  isCoordinatorMode = false;
   isLoading = false;
   pendingDocumentIds = new Set<number>();
   assistantDisplayName = 'Assistante';
@@ -1621,6 +1763,10 @@ export class DashboardComponent implements OnInit {
   // Pilier mode properties
   pilierServiceName = '';
   pilierActiveTab = 'a-receptionner';
+
+  // Coordinator mode properties
+  coordinatorDisplayName = '';
+  coordinatorActiveTab = 'a-valider';
 
   // Secretariat mode properties
   secretariatDisplayName = '';
@@ -1652,6 +1798,32 @@ export class DashboardComponent implements OnInit {
   setServiceTab(tab: string): void {
     this.serviceActiveTab = tab;
   }
+
+  // Coordinator mode data
+  coordinatorCards: Array<{
+    label: string;
+    count: number;
+    countColor: string;
+    icon: string;
+    iconBg: string;
+    iconColor: string;
+    tabKey: string;
+  }> = [];
+  coordinatorTabs = [
+    { key: 'a-valider', label: 'À valider', icon: '⏳' },
+    { key: 'rejetes', label: 'Rejetés', icon: '🔄' },
+    { key: 'valides', label: 'Validés', icon: '✔' }
+  ];
+  coordinatorDocuments: Array<DashboardDocument & { category: string; deadline?: string; chiefInstruction?: string; coordinatorComment?: string; sender?: string }> = [];
+
+  get filteredCoordinatorDocuments() {
+    return this.coordinatorDocuments.filter((d) => d.category === this.coordinatorActiveTab);
+  }
+
+  setCoordinatorTab(tab: string): void {
+    this.coordinatorActiveTab = tab;
+  }
+
   secretariatCards: Array<{
     label: string;
     count: number;
@@ -1773,6 +1945,7 @@ export class DashboardComponent implements OnInit {
     this.isPilierMode = role === 'PILIER';
     this.isServiceMode = role === 'SERVICE_INTERNE';
     this.isSecretariatMode = role === 'SECRETARIAT';
+    this.isCoordinatorMode = role === 'PILIER_COORD';
     const isChefSgMode = role === 'CHEF_SG';
     this.assistantDisplayName = this.authService.user()?.name || 'Assistante';
     this.todayLabel = new Intl.DateTimeFormat('fr-FR', {
@@ -1784,6 +1957,11 @@ export class DashboardComponent implements OnInit {
 
     if (this.isPilierMode) {
       this.initPilierDashboard();
+      return;
+    }
+
+    if (this.isCoordinatorMode) {
+      this.initCoordinatorDashboard();
       return;
     }
 
@@ -2342,6 +2520,115 @@ export class DashboardComponent implements OnInit {
             ].join('\n')
           );
         }
+      },
+      error: () => {
+        this.pendingDocumentIds.delete(documentId);
+      }
+    });
+  }
+
+  // ── Coordinateur mode ──
+
+  private initCoordinatorDashboard(): void {
+    this.coordinatorDisplayName = this.authService.user()?.name || 'Coordinateur';
+
+    this.coordinatorCards = [
+      { label: 'À valider', count: 0, countColor: '#2563eb', icon: '⏳', iconBg: '#eff6ff', iconColor: '#3b82f6', tabKey: 'a-valider' },
+      { label: 'Rejetés', count: 0, countColor: '#dc2626', icon: '🔄', iconBg: '#fef2f2', iconColor: '#dc2626', tabKey: 'rejetes' },
+      { label: 'Validés', count: 0, countColor: '#16a34a', icon: '✔', iconBg: '#f0fdf4', iconColor: '#16a34a', tabKey: 'valides' },
+      { label: 'Urgents', count: 0, countColor: '#ea580c', icon: '!', iconBg: '#fff7ed', iconColor: '#ea580c', tabKey: 'a-valider' }
+    ];
+
+    this.loadCoordinatorDashboard();
+  }
+
+  private loadCoordinatorDashboard(): void {
+    this.isLoading = true;
+    this.http.get<any>(`${API_BASE_URL}/coordinator/dashboard`).subscribe({
+      next: (response) => {
+        if (response?.cards) {
+          this.coordinatorCards[0].count = response.cards.pending ?? 0;
+          this.coordinatorCards[1].count = response.cards.rejected ?? 0;
+          this.coordinatorCards[2].count = response.cards.validated ?? 0;
+          this.coordinatorCards[3].count = response.cards.urgent ?? 0;
+        }
+
+        if (response?.documents) {
+          this.coordinatorDocuments = response.documents.map((doc: any) => ({
+            id: doc.id,
+            number: doc.number,
+            object: doc.object || doc.subject,
+            type: doc.type || '',
+            owner: doc.owner || doc.sender || '',
+            ownerRole: doc.ownerRole || '',
+            status: doc.status,
+            statusTone: doc.statusTone || 'info',
+            lastAction: this.formatDate(doc.lastActionAt || doc.pilierSentToCoordinatorAt || doc.createdAt || ''),
+            lastActionNote: doc.lastActionNote || '',
+            delay: doc.delay || '',
+            delayTone: doc.delayTone || 'muted',
+            category: doc.category || 'a-valider',
+            deadline: doc.deadline ? this.formatDate(doc.deadline) : undefined,
+            chiefInstruction: doc.chiefInstruction || '',
+            coordinatorComment: doc.coordinatorComment || '',
+            sender: doc.sender || '',
+            priority: doc.priority || doc.chiefPriority || 'Normale'
+          }));
+        }
+
+        this.isLoading = false;
+      },
+      error: () => {
+        this.isLoading = false;
+      }
+    });
+  }
+
+  coordinatorValidate(documentId: number): void {
+    if (this.pendingDocumentIds.has(documentId)) return;
+
+    const comment = (window.prompt('Commentaire de validation (optionnel):') || '').trim();
+
+    this.pendingDocumentIds.add(documentId);
+    this.http.patch(`${API_BASE_URL}/coordinator/documents/${documentId}/validate`, {
+      comment: comment || undefined
+    }).subscribe({
+      next: () => {
+        this.pendingDocumentIds.delete(documentId);
+        this.loadCoordinatorDashboard();
+      },
+      error: () => {
+        this.pendingDocumentIds.delete(documentId);
+      }
+    });
+  }
+
+  coordinatorReject(documentId: number): void {
+    if (this.pendingDocumentIds.has(documentId)) return;
+
+    const reasons = [
+      'Motif du rejet (obligatoire):',
+      '',
+      'Exemples:',
+      '- Qualité insuffisante',
+      '- Informations manquantes',
+      '- Erreurs factuelles',
+      '- Format non conforme',
+      '- Analyse incomplète',
+      '',
+      'Saisissez votre feedback détaillé:'
+    ].join('\n');
+
+    const comment = (window.prompt(reasons) || '').trim();
+    if (!comment) return;
+
+    this.pendingDocumentIds.add(documentId);
+    this.http.patch(`${API_BASE_URL}/coordinator/documents/${documentId}/reject`, {
+      comment
+    }).subscribe({
+      next: () => {
+        this.pendingDocumentIds.delete(documentId);
+        this.loadCoordinatorDashboard();
       },
       error: () => {
         this.pendingDocumentIds.delete(documentId);

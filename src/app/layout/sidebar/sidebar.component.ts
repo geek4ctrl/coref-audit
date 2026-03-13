@@ -250,6 +250,19 @@ export class SidebarComponent {
       ];
     }
 
+    if (role === 'PILIER_COORD') {
+      return [
+        {
+          title: 'COORDINATEUR',
+          items: [
+            { label: 'Dashboard', route: '/dashboard', icon: '⌘' },
+            { label: 'Documents', route: '/documents', icon: '📄' },
+            { label: 'Recherche', route: '/recherche', icon: '🔍' }
+          ]
+        }
+      ];
+    }
+
     if (role === 'SECRETARIAT') {
       return [
         {
