@@ -250,6 +250,21 @@ export class SidebarComponent {
       ];
     }
 
+    if (role === 'SECRETARIAT') {
+      return [
+        {
+          title: 'BUREAU SECRÉTARIAT',
+          items: [
+            { label: 'Dashboard', route: '/dashboard', icon: '⌘' },
+            { label: 'Documents à formater', route: '/documents', icon: '📋' },
+            { label: 'Documents formatés', route: '/documents', icon: '📄' },
+            { label: 'Envoyer / Router', route: '/envoi', icon: '✈' },
+            { label: 'Recherche', route: '/recherche', icon: '🔍' }
+          ]
+        }
+      ];
+    }
+
     if (role === 'RECEPTION') {
       return [
         {
