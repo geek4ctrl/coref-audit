@@ -265,6 +265,27 @@ export class SidebarComponent {
       ];
     }
 
+    if (role === 'SERVICE_INTERNE') {
+      return [
+        {
+          title: 'SERVICE',
+          items: [
+            { label: 'Dashboard', route: '/dashboard', icon: '⌘' },
+            { label: 'Documents', route: '/documents', icon: '📄' },
+            { label: 'Recherche', route: '/recherche', icon: '🔍' },
+            { label: 'Documents du Chef', route: '/a-traiter-par-chef', icon: '📋' },
+            { label: 'Rédiger un document', route: '/nouveau', icon: '✍️' }
+          ]
+        },
+        {
+          title: '',
+          items: [
+            { label: 'Messagerie', route: '/messagerie', icon: '✉️' }
+          ]
+        }
+      ];
+    }
+
     if (role === 'RECEPTION') {
       return [
         {
