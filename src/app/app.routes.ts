@@ -89,7 +89,7 @@ export const routes: Routes = [
       {
         path: 'messagerie',
         component: MessagerieComponent,
-        data: { roles: ['ADMIN', 'RECEPTION', 'SERVICE_INTERNE'] },
+        data: { roles: ['ADMIN', 'RECEPTION', 'SERVICE_INTERNE', 'CHEF_SG'] },
       },
       {
         path: 'envoi',
