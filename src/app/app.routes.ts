@@ -33,7 +33,7 @@ export const routes: Routes = [
       {
         path: 'dashboard',
         component: DashboardComponent,
-        data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF', 'PILIER', 'AUDITEUR'] },
+        data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF', 'PILIER', 'SECRETARIAT', 'AUDITEUR'] },
       },
       {
         path: 'a-classer-annoter',

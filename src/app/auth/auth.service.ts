@@ -76,6 +76,7 @@ export class AuthService {
       case 'PILIER':
         return '/dashboard';
       case 'SECRETARIAT':
+        return '/dashboard';
       case 'PILIER_COORD':
       case 'SERVICE_INTERNE':
         return '/documents';
