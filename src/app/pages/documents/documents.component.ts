@@ -1,6 +1,8 @@
-import { Component, ChangeDetectionStrategy, signal, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { API_BASE_URL } from '../../auth/auth.service';
 
 interface Document {
   number: string;
@@ -12,6 +14,30 @@ interface Document {
   ownerRole: string;
   lastActionDate: string;
   daysDelay: number;
+  priority: string;
+  isLate: boolean;
+}
+
+interface ApiDocument {
+  id: number;
+  number: string;
+  subject: string;
+  documentType: string;
+  status: string;
+  category: string;
+  priority: string;
+  currentHolder: string;
+  holderRole: string;
+  isLate: boolean;
+  delayDays: number;
+  createdAt: string;
+}
+
+interface ApiResponse {
+  documents: ApiDocument[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 @Component({
@@ -43,68 +69,49 @@ interface Document {
           <div class="filters-grid">
             <div class="filter-group">
               <label class="filter-label">Statut</label>
-              <select class="filter-select" (change)="onFilterChange()">
-                <option>Tous les statuts</option>
-                <option>Document envoyé</option>
-                <option>Document reçu</option>
+              <select class="filter-select" [(ngModel)]="filterStatus" (ngModelChange)="loadDocuments()">
+                <option value="">Tous les statuts</option>
+                <option value="Document créé">Document créé</option>
+                <option value="Remis">Remis</option>
+                <option value="À traiter">À traiter</option>
+                <option value="En cours">En cours</option>
+                <option value="Terminé">Terminé</option>
+                <option value="Traité">Traité</option>
+                <option value="Clôturé">Clôturé</option>
+                <option value="Validé">Validé</option>
               </select>
             </div>
 
             <div class="filter-group">
-              <label class="filter-label">Détenteur actuel</label>
-              <select class="filter-select" (change)="onFilterChange()">
-                <option>Tous les détenteurs</option>
-                <option>Direction des Ressources Humaines</option>
-                <option>Marie Kabongo</option>
-                <option>Jean Mukendi</option>
-              </select>
-            </div>
-
-            <div class="filter-group">
-              <label class="filter-label">Type de document</label>
-              <select class="filter-select" (change)="onFilterChange()">
-                <option>Tous les types</option>
-                <option>Courrier d'arrivée</option>
-                <option>Rapport</option>
-                <option>Décision</option>
+              <label class="filter-label">Catégorie</label>
+              <select class="filter-select" [(ngModel)]="filterCategory" (ngModelChange)="loadDocuments()">
+                <option value="">Toutes les catégories</option>
+                <option value="COURRIER_ARRIVEE">Courrier d'arrivée</option>
+                <option value="COURRIER_DEPART">Courrier de départ</option>
+                <option value="NOTE_INTERNE">Note interne</option>
+                <option value="RAPPORT">Rapport</option>
+                <option value="DEMANDE">Demande</option>
               </select>
             </div>
 
             <div class="filter-group">
               <label class="filter-label">Priorité</label>
-              <select class="filter-select" (change)="onFilterChange()">
-                <option>Toutes priorités</option>
-                <option>Haute</option>
-                <option>Moyenne</option>
-                <option>Basse</option>
+              <select class="filter-select" [(ngModel)]="filterPriority" (ngModelChange)="loadDocuments()">
+                <option value="">Toutes priorités</option>
+                <option value="Urgente">Urgente</option>
+                <option value="Haute">Haute</option>
+                <option value="Normale">Normale</option>
+                <option value="Basse">Basse</option>
               </select>
             </div>
 
             <div class="filter-group">
               <label class="filter-label">En retard</label>
-              <select class="filter-select" (change)="onFilterChange()">
-                <option>Tous</option>
-                <option>Oui</option>
-                <option>Non</option>
+              <select class="filter-select" [(ngModel)]="filterLate" (ngModelChange)="loadDocuments()">
+                <option value="">Tous</option>
+                <option value="true">Oui</option>
+                <option value="false">Non</option>
               </select>
-            </div>
-
-            <div class="filter-group">
-              <label class="filter-label">Période</label>
-              <div class="date-range">
-                <input
-                  type="date"
-                  class="date-input"
-                  (change)="onFilterChange()"
-                  placeholder="yyyy/mm/dd"
-                />
-                <input
-                  type="date"
-                  class="date-input"
-                  (change)="onFilterChange()"
-                  placeholder="yyyy/mm/dd"
-                />
-              </div>
             </div>
           </div>
         </div>
@@ -125,40 +132,48 @@ interface Document {
             </tr>
           </thead>
           <tbody>
-            @for (doc of documents(); track doc.number) {
-              <tr class="table-row" (click)="selectDocument(doc)">
-                <td class="col-number">
-                  <span class="doc-number">{{ doc.number }}</span>
-                </td>
-                <td class="col-title">
-                  <span class="doc-title">{{ doc.title }}</span>
-                </td>
-                <td class="col-type">
-                  <span class="doc-type">{{ doc.type }}</span>
-                </td>
-                <td class="col-status">
-                  <span class="pill" [class]="doc.statusColor">{{ doc.status }}</span>
-                </td>
-                <td class="col-owner">
-                  <div class="owner-info">
-                    <span class="owner-name">{{ doc.owner }}</span>
-                    <span class="owner-role">{{ doc.ownerRole }}</span>
-                  </div>
-                </td>
-                <td class="col-action">
-                  <span class="action-date">{{ doc.lastActionDate }}</span>
-                  <span class="action-days">Il y a {{ doc.daysDelay }} jours</span>
-                </td>
-                <td class="col-delay">
-                  <span class="delay-badge">{{ doc.daysDelay > 0 ? 'Oui' : 'Non' }}</span>
-                </td>
-                <td class="col-actions" (click)="$event.stopPropagation()">
-                  <div class="action-buttons">
-                    <button class="icon-btn" title="Voir">👁</button>
-                    <button class="icon-btn" title="Plus">⋯</button>
-                  </div>
-                </td>
-              </tr>
+            @if (isLoading()) {
+              <tr><td colspan="8" style="text-align:center;padding:40px;color:#64748b">Chargement...</td></tr>
+            } @else if (documents().length === 0) {
+              <tr><td colspan="8" style="text-align:center;padding:40px;color:#64748b">Aucun document trouvé</td></tr>
+            } @else {
+              @for (doc of documents(); track doc.number) {
+                <tr class="table-row" [class.late-row]="doc.isLate" (click)="selectDocument(doc)">
+                  <td class="col-number">
+                    <span class="doc-number">{{ doc.number }}</span>
+                  </td>
+                  <td class="col-title">
+                    <span class="doc-title">{{ doc.title }}</span>
+                  </td>
+                  <td class="col-type">
+                    <span class="doc-type">{{ doc.type }}</span>
+                  </td>
+                  <td class="col-status">
+                    <span class="pill" [class]="doc.statusColor">{{ doc.status }}</span>
+                  </td>
+                  <td class="col-owner">
+                    <div class="owner-info">
+                      <span class="owner-name">{{ doc.owner }}</span>
+                      <span class="owner-role">{{ doc.ownerRole }}</span>
+                    </div>
+                  </td>
+                  <td class="col-action">
+                    <span class="action-date">{{ doc.lastActionDate }}</span>
+                    @if (doc.daysDelay > 0) {
+                      <span class="action-days">{{ doc.daysDelay }} jours de retard</span>
+                    }
+                  </td>
+                  <td class="col-delay">
+                    <span class="delay-badge" [class.delay-ok]="!doc.isLate">{{ doc.isLate ? 'Oui' : 'Non' }}</span>
+                  </td>
+                  <td class="col-actions" (click)="$event.stopPropagation()">
+                    <div class="action-buttons">
+                      <button class="icon-btn" title="Voir">👁</button>
+                      <button class="icon-btn" title="Plus">⋯</button>
+                    </div>
+                  </td>
+                </tr>
+              }
             }
           </tbody>
         </table>
@@ -431,6 +446,15 @@ interface Document {
       color: #b91c1c;
     }
 
+    .delay-badge.delay-ok {
+      background: #dcfce7;
+      color: #15803d;
+    }
+
+    .late-row {
+      background: #fef2f2;
+    }
+
     .action-buttons {
       display: flex;
       gap: 8px;
@@ -477,64 +501,23 @@ interface Document {
     }
   `]
 })
-export class DocumentsComponent {
-  private router = inject(Router);
-  private route = inject(ActivatedRoute);
+export class DocumentsComponent implements OnInit {
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly http = inject(HttpClient);
+
   showFilters = signal(true);
+  isLoading = signal(false);
   currentScopeLabel = signal<string | null>(null);
+  documents = signal<Document[]>([]);
+  totalDocuments = signal(0);
 
-  documents = signal<Document[]>([
-    {
-      number: 'COREF-2026-0015',
-      title: "Courrier d'arrivée - Demande d'audience Ministre",
-      type: "Courrier d'arrivée",
-      status: 'Document envoyé',
-      statusColor: 'info',
-      owner: 'Direction des Ressources Humaines',
-      ownerRole: 'SERVICE',
-      lastActionDate: '02/02/2026',
-      daysDelay: 11
-    },
-    {
-      number: 'COREF-2026-0019',
-      title: 'Rapport statistiques - Exécution budgétaire janvier',
-      type: 'Rapport',
-      status: 'Document reçu',
-      statusColor: 'success',
-      owner: 'Marie Kabongo',
-      ownerRole: 'PILIER',
-      lastActionDate: '02/02/2026',
-      daysDelay: 11
-    },
-    {
-      number: 'COREF-2026-0013',
-      title: 'Décision - Attribution marché public véhicules',
-      type: 'Décision',
-      status: 'Document reçu',
-      statusColor: 'success',
-      owner: 'Jean Mukendi',
-      ownerRole: 'CHEF',
-      lastActionDate: '02/02/2026',
-      daysDelay: 11
-    },
-    {
-      number: 'COREF-2026-0017',
-      title: "Rapport d'audit interne - Janvier 2026",
-      type: 'Rapport',
-      status: 'Document envoyé',
-      statusColor: 'info',
-      owner: 'Marie Kabongo',
-      ownerRole: 'PILIER',
-      lastActionDate: '01/02/2026',
-      daysDelay: 12
-    }
-  ]);
+  filterStatus = '';
+  filterPriority = '';
+  filterCategory = '';
+  filterLate = '';
 
-  toggleFilters(): void {
-    this.showFilters.update(value => !value);
-  }
-
-  constructor() {
+  ngOnInit(): void {
     this.route.queryParamMap.subscribe((params) => {
       const scope = params.get('scope');
       const showFiltersParam = params.get('showFilters');
@@ -543,24 +526,93 @@ export class DocumentsComponent {
         this.showFilters.set(true);
       }
 
+      if (scope === 'delayed') {
+        this.filterLate = 'true';
+      }
+
       this.currentScopeLabel.set(this.mapScope(scope));
+      this.loadDocuments();
+    });
+  }
+
+  toggleFilters(): void {
+    this.showFilters.update(value => !value);
+  }
+
+  loadDocuments(): void {
+    this.isLoading.set(true);
+
+    let params = new HttpParams().set('limit', '100');
+    if (this.filterStatus) params = params.set('status', this.filterStatus);
+    if (this.filterPriority) params = params.set('priority', this.filterPriority);
+    if (this.filterCategory) params = params.set('category', this.filterCategory);
+    if (this.filterLate) params = params.set('late', this.filterLate);
+
+    this.http.get<ApiResponse>(`${API_BASE_URL}/documents`, { params }).subscribe({
+      next: (response) => {
+        this.documents.set(response.documents.map(d => this.mapDocument(d)));
+        this.totalDocuments.set(response.total);
+        this.isLoading.set(false);
+      },
+      error: () => {
+        this.documents.set([]);
+        this.isLoading.set(false);
+      }
     });
   }
 
   subtitleText(): string {
     const scopeLabel = this.currentScopeLabel();
-    if (!scopeLabel) {
-      return `${this.documents().length} documents`;
-    }
-    return `${this.documents().length} documents · ${scopeLabel}`;
-  }
-
-  onFilterChange(): void {
-    // Handle filter changes
+    const count = this.documents().length;
+    const total = this.totalDocuments();
+    const label = count < total ? `${count} / ${total} documents` : `${count} documents`;
+    return scopeLabel ? `${label} · ${scopeLabel}` : label;
   }
 
   selectDocument(doc: Document): void {
     this.router.navigate(['/documents'], { queryParams: { docId: doc.number } });
+  }
+
+  private mapDocument(d: ApiDocument): Document {
+    const completedStatuses = ['Traité', 'Clôturé', 'Validé', 'Remis', 'Terminé'];
+    const warningStatuses = ['En cours', 'En traitement'];
+    let statusColor: 'info' | 'warning' | 'danger' | 'success';
+
+    if (d.isLate) {
+      statusColor = 'danger';
+    } else if (completedStatuses.includes(d.status)) {
+      statusColor = 'success';
+    } else if (warningStatuses.includes(d.status)) {
+      statusColor = 'warning';
+    } else {
+      statusColor = 'info';
+    }
+
+    const categoryLabels: Record<string, string> = {
+      'COURRIER_ARRIVEE': "Courrier d'arrivée",
+      'COURRIER_DEPART': 'Courrier de départ',
+      'NOTE_INTERNE': 'Note interne',
+      'RAPPORT': 'Rapport',
+      'DEMANDE': 'Demande'
+    };
+
+    return {
+      number: d.number,
+      title: d.subject,
+      type: categoryLabels[d.documentType] || d.documentType || d.category,
+      status: d.status,
+      statusColor,
+      owner: d.currentHolder,
+      ownerRole: d.holderRole,
+      lastActionDate: this.formatDate(d.createdAt),
+      daysDelay: d.delayDays,
+      priority: d.priority,
+      isLate: d.isLate
+    };
+  }
+
+  private formatDate(value: string): string {
+    return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short' }).format(new Date(value));
   }
 
   private mapScope(scope: string | null): string | null {
@@ -577,11 +629,6 @@ export class DocumentsComponent {
       'treated-this-week': 'Traités cette semaine',
       'pilier': 'Par pilier'
     };
-
-    if (!scope) {
-      return null;
-    }
-
-    return scopeLabels[scope] ?? null;
+    return scope ? (scopeLabels[scope] ?? null) : null;
   }
 }
