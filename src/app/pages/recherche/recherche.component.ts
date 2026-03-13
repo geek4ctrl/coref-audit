@@ -20,6 +20,10 @@ interface SearchApiResult {
   status: string;
   sender: string;
   category: string;
+  priority: string;
+  currentHolder: string;
+  holderRole: string;
+  isLate: boolean;
   createdAt: string;
   deliveredAt: string | null;
 }
@@ -361,7 +365,7 @@ export class RechercheComponent {
   private runSearch(query: string) {
     this.isLoading.set(true);
 
-    this.http.get<SearchApiResponse>(`${API_BASE_URL}/reception/search`, { params: { q: query } }).subscribe({
+    this.http.get<SearchApiResponse>(`${API_BASE_URL}/documents/search`, { params: { q: query } }).subscribe({
       next: (response) => {
         this.results.set(response.results.map((item) => this.mapApiResult(item)));
         this.isLoading.set(false);
@@ -374,17 +378,18 @@ export class RechercheComponent {
   }
 
   private mapApiResult(item: SearchApiResult): SearchResult {
-    const normalizedStatus = this.normalizeStatus(item.status);
-    const isDelivered = normalizedStatus === 'Remis';
+    const status = this.normalizeStatus(item.status);
+    const isCompleted = ['Traité', 'Clôturé', 'Validé', 'Remis'].includes(status);
+    const statusTone: 'info' | 'warning' | 'success' = isCompleted ? 'success' : item.isLate ? 'warning' : 'info';
 
     return {
       number: item.number,
       title: item.subject,
-      status: normalizedStatus,
-      statusTone: isDelivered ? 'success' : 'info',
-      delay: isDelivered ? 'À jour' : 'En attente',
-      delayTone: isDelivered ? 'muted' : 'danger',
-      owner: item.sender,
+      status,
+      statusTone,
+      delay: item.isLate ? 'En retard' : 'À jour',
+      delayTone: item.isLate ? 'danger' : 'muted',
+      owner: item.currentHolder,
       date: this.formatDate(item.createdAt),
       tag: item.category
     };
@@ -394,7 +399,6 @@ export class RechercheComponent {
     if (status === 'Document crÃ©Ã©' || status === 'Document cree') {
       return 'Document créé';
     }
-
     return status;
   }
 
