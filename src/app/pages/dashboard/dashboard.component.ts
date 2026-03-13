@@ -252,6 +252,7 @@ interface DashboardDocument {
                         }
                         @if (doc.status === 'FINALISE') {
                           <button class="pilier-action-btn purple" (click)="serviceAction(doc.id, 'send-to-coordinator')" [disabled]="isBusy(doc.id)">Envoyer au Coord.</button>
+                          <button class="pilier-action-btn blue" (click)="serviceAction(doc.id, 'send-to-assistant')" [disabled]="isBusy(doc.id)">Envoyer à l'Assistante</button>
                         }
                         @if (doc.status === 'ENVOYE_COORDINATEUR') {
                           <span class="doc-meta">En attente validation</span>
