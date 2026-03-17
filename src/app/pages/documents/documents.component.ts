@@ -56,7 +56,7 @@ interface ApiResponse {
             <span class="icon">⊞</span>
             {{ showFilters() ? 'Masquer filtres' : 'Afficher filtres' }}
           </button>
-          <button class="btn-export">
+          <button class="btn-export" (click)="exportCsv()">
             <span class="icon">⬇</span>
             Exporter CSV
           </button>
@@ -571,6 +571,26 @@ export class DocumentsComponent implements OnInit {
 
   selectDocument(doc: Document): void {
     this.router.navigate(['/documents'], { queryParams: { docId: doc.number } });
+  }
+
+  exportCsv(): void {
+    const docs = this.documents();
+    if (docs.length === 0) return;
+    const headers = ['Numéro', 'Objet', 'Type', 'Statut', 'Détenteur', 'Rôle', 'Dernière action', 'Retard (jours)', 'Priorité', 'En retard'];
+    const escape = (v: string) => `"${(v ?? '').replace(/"/g, '""')}"`;
+    const rows = docs.map(d => [
+      escape(d.number), escape(d.title), escape(d.type), escape(d.status),
+      escape(d.owner), escape(d.ownerRole), escape(d.lastActionDate),
+      d.daysDelay.toString(), escape(d.priority), d.isLate ? 'Oui' : 'Non'
+    ].join(','));
+    const csv = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `documents-coref-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   private mapDocument(d: ApiDocument): Document {

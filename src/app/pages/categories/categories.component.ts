@@ -1,11 +1,15 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { API_BASE_URL } from '../../auth/auth.service';
 
 interface RoleCard {
   title: string;
+  roleKey: string;
   description: string;
   tag: string;
   tagTone: 'violet' | 'green' | 'blue' | 'amber' | 'indigo' | 'orange';
+  userCount: number;
 }
 
 @Component({
@@ -31,11 +35,12 @@ interface RoleCard {
       </div>
 
       <div class="roles-grid">
-        @for (role of roles; track role.title) {
+        @for (role of roles(); track role.roleKey) {
           <div class="role-card">
             <div class="role-header">
               <div class="role-icon">🛡</div>
               <div class="role-title">{{ role.title }}</div>
+              <span class="user-count">{{ role.userCount }} utilisateur{{ role.userCount !== 1 ? 's' : '' }}</span>
             </div>
             <div class="role-description">{{ role.description }}</div>
             <span class="role-tag" [ngClass]="role.tagTone">{{ role.tag }}</span>
@@ -147,6 +152,16 @@ interface RoleCard {
       font-size: 13px;
       font-weight: 700;
       color: #0f172a;
+      flex: 1;
+    }
+
+    .user-count {
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748b;
+      background: #f1f5f9;
+      padding: 3px 8px;
+      border-radius: 999px;
     }
 
     .role-description {
@@ -203,55 +218,35 @@ interface RoleCard {
     }
   `]
 })
-export class CategoriesComponent {
-  roles: RoleCard[] = [
-    {
-      title: 'Chef/SG',
-      description: 'Peut voir tous les documents, router, transférer, relancer et clôturer',
-      tag: 'Accès complet',
-      tagTone: 'violet'
-    },
-    {
-      title: 'Assistante du Chef',
-      description: 'Classe, annote et transfère les documents au Chef/SG',
-      tag: 'Accès opérationnel',
-      tagTone: 'green'
-    },
-    {
-      title: 'Assistant technique (Pilier)',
-      description: 'Voit uniquement ses documents assignés, doit accuser réception et traiter',
-      tag: 'Accès limité',
-      tagTone: 'blue'
-    },
-    {
-      title: 'Assistant technique coordinateur',
-      description: 'Classe, annote et transfère les documents au Chef/SG',
-      tag: 'Dual-mode',
-      tagTone: 'indigo'
-    },
-    {
-      title: 'Secrétariat',
-      description: 'Mise en forme administrative des documents avant transmission hiérarchique',
-      tag: 'Accès opérationnel',
-      tagTone: 'green'
-    },
-    {
-      title: 'Service interne',
-      description: 'Voit uniquement les documents assignés à son service',
-      tag: 'Accès limité',
-      tagTone: 'blue'
-    },
-    {
-      title: 'Reception',
-      description: 'Enregistre et distribue les documents entrants',
-      tag: 'Accès opérationnel',
-      tagTone: 'green'
-    },
-    {
-      title: 'Administrateur',
-      description: 'Gère les paramètres, utilisateurs, services et catégories',
-      tag: 'Administration',
-      tagTone: 'orange'
-    }
+export class CategoriesComponent implements OnInit {
+  private readonly http = inject(HttpClient);
+
+  private readonly roleDefinitions: Omit<RoleCard, 'userCount'>[] = [
+    { title: 'Chef/SG', roleKey: 'CHEF_SG', description: 'Peut voir tous les documents, router, transférer, relancer et clôturer', tag: 'Accès complet', tagTone: 'violet' },
+    { title: 'Assistante du Chef', roleKey: 'ASSISTANT_CHEF', description: 'Classe, annote et transfère les documents au Chef/SG', tag: 'Accès opérationnel', tagTone: 'green' },
+    { title: 'Assistant technique (Pilier)', roleKey: 'PILIER', description: 'Voit uniquement ses documents assignés, doit accuser réception et traiter', tag: 'Accès limité', tagTone: 'blue' },
+    { title: 'Assistant technique coordinateur', roleKey: 'PILIER_COORD', description: 'Valide ou rejette les documents traités par les piliers', tag: 'Dual-mode', tagTone: 'indigo' },
+    { title: 'Secrétariat', roleKey: 'SECRETARIAT', description: 'Mise en forme administrative des documents avant transmission hiérarchique', tag: 'Accès opérationnel', tagTone: 'green' },
+    { title: 'Service interne', roleKey: 'SERVICE_INTERNE', description: 'Voit uniquement les documents assignés à son service', tag: 'Accès limité', tagTone: 'blue' },
+    { title: 'Réception', roleKey: 'RECEPTION', description: 'Enregistre et distribue les documents entrants', tag: 'Accès opérationnel', tagTone: 'green' },
+    { title: 'Administrateur', roleKey: 'ADMIN', description: 'Gère les paramètres, utilisateurs, services et catégories', tag: 'Administration', tagTone: 'orange' },
+    { title: 'Auditeur', roleKey: 'AUDITEUR', description: 'Consultation en lecture seule pour audit et contrôle', tag: 'Lecture seule', tagTone: 'amber' }
   ];
+
+  roles = signal<RoleCard[]>(this.roleDefinitions.map(r => ({ ...r, userCount: 0 })));
+
+  ngOnInit(): void {
+    this.http.get<{ users: { role: string }[] }>(`${API_BASE_URL}/users`).subscribe({
+      next: (res) => {
+        const counts: Record<string, number> = {};
+        for (const u of res.users) {
+          counts[u.role] = (counts[u.role] || 0) + 1;
+        }
+        this.roles.set(this.roleDefinitions.map(r => ({
+          ...r,
+          userCount: counts[r.roleKey] || 0
+        })));
+      }
+    });
+  }
 }
