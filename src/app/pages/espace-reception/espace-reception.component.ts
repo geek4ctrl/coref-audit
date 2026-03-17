@@ -1,10 +1,14 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { API_BASE_URL } from '../../auth/auth.service';
 
 interface ServiceCard {
+  id: number;
   name: string;
   code: string;
   description: string;
+  isActive: boolean;
 }
 
 @Component({
@@ -15,51 +19,65 @@ interface ServiceCard {
     <div class="page">
       <div class="page-header">
         <h2 class="page-title">Gestion des Services & Piliers</h2>
-        <p class="page-subtitle">Vue d'ensemble des services internes et des 16 piliers de réforme</p>
+        <p class="page-subtitle">Vue d'ensemble des services internes et des piliers de réforme</p>
       </div>
 
       <div class="section">
         <div class="section-title">
           <span class="section-icon">🏢</span>
           <span>Services Internes</span>
-          <span class="count-badge">{{ services.length }} services</span>
+          <span class="count-badge">{{ services().length }} services</span>
         </div>
-        <div class="cards-grid">
-          @for (service of services; track service.code) {
-            <div class="service-card">
-              <div class="service-icon">🏛</div>
-              <div class="service-content">
-                <div class="service-title">
-                  <span>{{ service.name }}</span>
-                  <span class="code-badge">{{ service.code }}</span>
+        @if (loadingServices()) {
+          <div class="loading">Chargement des services...</div>
+        } @else {
+          <div class="cards-grid">
+            @for (service of services(); track service.id) {
+              <div class="service-card" [class.inactive]="!service.isActive">
+                <div class="service-icon">🏛</div>
+                <div class="service-content">
+                  <div class="service-title">
+                    <span>{{ service.name }}</span>
+                    <span class="code-badge">{{ service.code }}</span>
+                    @if (!service.isActive) {
+                      <span class="inactive-badge">Inactif</span>
+                    }
+                  </div>
+                  <div class="service-description">{{ service.description }}</div>
                 </div>
-                <div class="service-description">{{ service.description }}</div>
               </div>
-            </div>
-          }
-        </div>
+            }
+          </div>
+        }
       </div>
 
       <div class="section">
         <div class="section-title">
           <span class="section-icon">👥</span>
           <span>Piliers de Réforme</span>
-          <span class="count-badge blue">{{ piliers.length }} piliers</span>
+          <span class="count-badge blue">{{ piliers().length }} piliers</span>
         </div>
-        <div class="cards-grid">
-          @for (pilier of piliers; track pilier.code) {
-            <div class="service-card">
-              <div class="service-icon">🏛</div>
-              <div class="service-content">
-                <div class="service-title">
-                  <span>{{ pilier.name }}</span>
-                  <span class="code-badge">{{ pilier.code }}</span>
+        @if (loadingPiliers()) {
+          <div class="loading">Chargement des piliers...</div>
+        } @else {
+          <div class="cards-grid">
+            @for (pilier of piliers(); track pilier.id) {
+              <div class="service-card" [class.inactive]="!pilier.isActive">
+                <div class="service-icon">🏛</div>
+                <div class="service-content">
+                  <div class="service-title">
+                    <span>{{ pilier.name }}</span>
+                    <span class="code-badge">{{ pilier.code }}</span>
+                    @if (!pilier.isActive) {
+                      <span class="inactive-badge">Inactif</span>
+                    }
+                  </div>
+                  <div class="service-description">{{ pilier.description }}</div>
                 </div>
-                <div class="service-description">{{ pilier.description }}</div>
               </div>
-            </div>
-          }
-        </div>
+            }
+          </div>
+        }
       </div>
     </div>
   `,
@@ -178,6 +196,26 @@ interface ServiceCard {
       color: #64748b;
     }
 
+    .inactive {
+      opacity: 0.5;
+    }
+
+    .inactive-badge {
+      font-size: 9px;
+      font-weight: 700;
+      color: #b91c1c;
+      background: #fee2e2;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 30px;
+      color: #64748b;
+      font-size: 13px;
+    }
+
     @media (max-width: 1024px) {
       .cards-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -191,145 +229,35 @@ interface ServiceCard {
     }
   `]
 })
-export class EspaceReceptionComponent {
-  services: ServiceCard[] = [
-    {
-      name: 'Direction des Ressources Humaines',
-      code: 'DRH',
-      description: 'Gestion du personnel et des ressources humaines'
-    },
-    {
-      name: 'Direction du Budget',
-      code: 'BUDGET',
-      description: 'Préparation et suivi du budget'
-    },
-    {
-      name: 'Direction de la Comptabilité',
-      code: 'COMPTA',
-      description: 'Comptabilité générale et analytique'
-    },
-    {
-      name: 'Service du Protocole',
-      code: 'PROTO',
-      description: 'Protocole et relations publiques'
-    },
-    {
-      name: 'Service Logistique',
-      code: 'LOG',
-      description: 'Gestion de la logistique et des approvisionnements'
-    },
-    {
-      name: 'Service Juridique',
-      code: 'JUR',
-      description: 'Conseil juridique et contentieux'
-    },
-    {
-      name: 'Direction Informatique',
-      code: 'INFO',
-      description: 'Support technique et systèmes d information'
-    },
-    {
-      name: 'Service Financier',
-      code: 'FIN',
-      description: 'Gestion financière et comptabilité'
-    },
-    {
-      name: 'Service Communication',
-      code: 'COM',
-      description: 'Communication interne et externe'
-    },
-    {
-      name: 'Service Maintenance',
-      code: 'MAINT',
-      description: 'Maintenance des bâtiments et équipements'
-    },
-    {
-      name: 'Service Courrier',
-      code: 'COUR',
-      description: 'Gestion du courrier et des envois'
-    },
-    {
-      name: 'Service Réception',
-      code: 'RECEP',
-      description: 'Réception et enregistrement des courriers entrants'
-    },
-    {
-      name: 'Service Nettoyage',
-      code: 'NETT',
-      description: 'Entretien et nettoyage des locaux'
-    },
-    {
-      name: 'Service Archive',
-      code: 'ARCH',
-      description: 'Archivage et conservation des documents'
-    },
-    {
-      name: 'Service Administratif',
-      code: 'ADMIN',
-      description: 'Administration générale et appui administratif'
-    },
-    {
-      name: 'Secrétariat',
-      code: 'SEC',
-      description: 'Secrétariat général et appui administratif'
-    }
-  ];
+export class EspaceReceptionComponent implements OnInit {
+  private readonly http = inject(HttpClient);
 
-  piliers: ServiceCard[] = [
-    {
-      name: 'Comptabilité Publique',
-      code: 'P01',
-      description: 'Normalisation et fiabilisation des comptes publics'
-    },
-    {
-      name: 'Gestion de la Trésorerie',
-      code: 'P02',
-      description: 'Prévision et optimisation de la trésorerie'
-    },
-    {
-      name: 'Réformes Budgétaires',
-      code: 'P03',
-      description: 'Modernisation du cycle budgétaire'
-    },
-    {
-      name: 'Contrôle Interne',
-      code: 'P04',
-      description: 'Renforcement des dispositifs de contrôle'
-    },
-    {
-      name: 'Digitalisation',
-      code: 'P05',
-      description: 'Transformation numérique des processus'
-    },
-    {
-      name: 'Achat Public',
-      code: 'P06',
-      description: 'Amélioration des procédures de passation'
-    },
-    {
-      name: 'Performance',
-      code: 'P07',
-      description: 'Pilotage par résultats et indicateurs'
-    },
-    {
-      name: 'Gouvernance',
-      code: 'P08',
-      description: 'Transparence et redevabilité'
-    },
-    {
-      name: 'Audit Interne',
-      code: 'P09',
-      description: 'Renforcement des audits et conformité'
-    },
-    {
-      name: 'Partenariats',
-      code: 'P10',
-      description: 'Coordination avec les partenaires techniques'
-    },
-    {
-      name: 'Communication',
-      code: 'P11',
-      description: 'Diffusion des réformes et gestion du changement'
-    }
-  ];
+  services = signal<ServiceCard[]>([]);
+  piliers = signal<ServiceCard[]>([]);
+  loadingServices = signal(true);
+  loadingPiliers = signal(true);
+
+  ngOnInit(): void {
+    this.http.get<{ services: any[] }>(`${API_BASE_URL}/services`).subscribe({
+      next: (res) => {
+        this.services.set(res.services.map(s => ({
+          id: s.id, name: s.name, code: s.code,
+          description: s.description, isActive: s.isActive
+        })));
+        this.loadingServices.set(false);
+      },
+      error: () => this.loadingServices.set(false)
+    });
+
+    this.http.get<{ piliers: any[] }>(`${API_BASE_URL}/piliers`).subscribe({
+      next: (res) => {
+        this.piliers.set(res.piliers.map(p => ({
+          id: p.id, name: p.name, code: p.code,
+          description: p.description, isActive: p.isActive
+        })));
+        this.loadingPiliers.set(false);
+      },
+      error: () => this.loadingPiliers.set(false)
+    });
+  }
 }

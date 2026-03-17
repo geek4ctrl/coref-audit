@@ -19,6 +19,7 @@ import { MessagerieComponent } from './pages/messagerie';
 import { AClasserAnnoterComponent } from './pages/a-classer-annoter/a-classer-annoter.component';
 import { EnvoyesAuChefComponent } from './pages/envoyes-au-chef/envoyes-au-chef.component';
 import { ATraiterParChefComponent } from './pages/a-traiter-par-chef/a-traiter-par-chef.component';
+import { AuditLogsComponent } from './pages/audit-logs/audit-logs.component';
 import { authChildGuard, authGuard } from './auth/auth.guard';
 
 export const routes: Routes = [
@@ -132,6 +133,11 @@ export const routes: Routes = [
         data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF', 'AUDITEUR'] },
       },
       { path: 'utilisateurs', component: UtilisateursComponent, data: { roles: ['ADMIN'] } },
+      {
+        path: 'audit-logs',
+        component: AuditLogsComponent,
+        data: { roles: ['ADMIN', 'AUDITEUR'] },
+      },
     ],
   },
 ];

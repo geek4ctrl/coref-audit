@@ -322,6 +322,7 @@ export class SidebarComponent {
             { label: 'Dashboard', route: '/dashboard', icon: '📊' },
             { label: 'Documents', route: '/documents', icon: '📄' },
             { label: 'Retards', route: '/retards', icon: '⏱️' },
+            { label: "Journal d'audit", route: '/audit-logs', icon: '📝' },
             { label: 'Recherche', route: '/recherche', icon: '🔍' }
           ]
         }
@@ -363,7 +364,8 @@ export class SidebarComponent {
           items: [
             { label: 'Utilisateurs', route: '/utilisateurs', icon: '👥' },
             { label: 'Rôles & Permissions', route: '/categories', icon: '🛡️' },
-            { label: 'Services & Piliers', route: '/services', icon: '🏛️' }
+            { label: 'Services & Piliers', route: '/services', icon: '🏛️' },
+            { label: "Journal d'audit", route: '/audit-logs', icon: '📝' }
           ]
         }
       ];
