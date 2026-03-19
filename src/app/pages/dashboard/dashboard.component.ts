@@ -1,9 +1,11 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { StatusCardComponent, StatusCard } from '../../shared/status-card/status-card.component';
 import { API_BASE_URL, AuthService } from '../../auth/auth.service';
+import { Observable } from 'rxjs';
+import { finalize, timeout } from 'rxjs/operators';
 
 interface AssistantDashboardResponse {
   cards: {
@@ -60,7 +62,6 @@ interface DashboardDocument {
 }
 
 @Component({
-  selector: 'app-dashboard',
   imports: [CommonModule, StatusCardComponent],
   template: `
     <div class="dashboard">
@@ -70,23 +71,33 @@ interface DashboardDocument {
             <h2 class="page-title pilier-title">Mes Documents - Service</h2>
             <p class="page-subtitle">{{ pilierServiceName }}</p>
           </div>
+          <div class="last-updated">Mise a jour: {{ lastUpdatedLabel }}</div>
         </div>
 
         <div class="pilier-status-cards">
-          @for (card of pilierCards; track card.label) {
-            <div
-              class="pilier-card"
-              [class.pilier-card-active]="pilierActiveTab === card.tabKey"
-              (click)="setPilierTab(card.tabKey)"
-            >
-              <div class="pilier-card-content">
-                <span class="pilier-card-label">{{ card.label }}</span>
-                <span class="pilier-card-count" [style.color]="card.countColor">{{ card.count }}</span>
+          @if (isLoading) {
+            @for (item of skeletonCards; track item) {
+              <div class="pilier-card skeleton-card">
+                <div class="skeleton-line wide"></div>
+                <div class="skeleton-line count"></div>
               </div>
-              <div class="pilier-card-icon" [style.background]="card.iconBg">
-                <span [style.color]="card.iconColor">{{ card.icon }}</span>
+            }
+          } @else {
+            @for (card of pilierCards; track card.label) {
+              <div
+                class="pilier-card"
+                [class.pilier-card-active]="pilierActiveTab === card.tabKey"
+                (click)="setPilierTab(card.tabKey)"
+              >
+                <div class="pilier-card-content">
+                  <span class="pilier-card-label">{{ card.label }}</span>
+                  <span class="pilier-card-count" [style.color]="card.countColor">{{ card.count }}</span>
+                </div>
+                <div class="pilier-card-icon" [style.background]="card.iconBg">
+                  <span [style.color]="card.iconColor">{{ card.icon }}</span>
+                </div>
               </div>
-            </div>
+            }
           }
         </div>
 
@@ -118,64 +129,78 @@ interface DashboardDocument {
                 </tr>
               </thead>
               <tbody>
-                @for (doc of filteredPilierDocuments; track doc.id) {
-                  <tr [class.urgent-row]="doc.priority === 'Haute' || doc.priority === 'Urgente'">
-                    <td><div class="doc-number">{{ doc.number }}</div></td>
-                    <td>
-                      <div class="doc-title">{{ doc.object }}</div>
-                      @if (doc.chiefInstruction) {
-                        <div class="doc-meta">{{ doc.chiefInstruction }}</div>
-                      }
-                      @if (doc.coordinatorComment && doc.category === 'retour-correction') {
-                        <div class="rejection-feedback-card">
-                          <div class="rejection-feedback-header">
-                            <span class="rejection-icon">⚠️</span>
-                            <strong>Feedback du Coordinateur — Modifications requises</strong>
+                @if (isLoading) {
+                  @for (row of skeletonRows; track row) {
+                    <tr class="skeleton-row">
+                      <td><div class="skeleton-line wide"></div></td>
+                      <td><div class="skeleton-line"></div><div class="skeleton-line short"></div></td>
+                      <td><div class="skeleton-pill"></div></td>
+                      <td><div class="skeleton-pill"></div></td>
+                      <td><div class="skeleton-line short"></div></td>
+                      <td><div class="skeleton-line short"></div></td>
+                      <td><div class="skeleton-line"></div></td>
+                    </tr>
+                  }
+                } @else {
+                  @for (doc of filteredPilierDocuments; track doc.id) {
+                    <tr [class.urgent-row]="doc.priority === 'Haute' || doc.priority === 'Urgente'">
+                      <td><div class="doc-number">{{ doc.number }}</div></td>
+                      <td>
+                        <div class="doc-title">{{ doc.object }}</div>
+                        @if (doc.chiefInstruction) {
+                          <div class="doc-meta">{{ doc.chiefInstruction }}</div>
+                        }
+                        @if (doc.coordinatorComment && doc.category === 'retour-correction') {
+                          <div class="rejection-feedback-card">
+                            <div class="rejection-feedback-header">
+                              <span class="rejection-icon">⚠️</span>
+                              <strong>Feedback du Coordinateur — Modifications requises</strong>
+                            </div>
+                            <div class="rejection-feedback-body">{{ doc.coordinatorComment }}</div>
                           </div>
-                          <div class="rejection-feedback-body">{{ doc.coordinatorComment }}</div>
-                        </div>
-                      }
-                    </td>
-                    <td>
-                      <span [class]="'priority-pill ' + getPriorityTone(doc.priority)">{{ doc.priority || '—' }}</span>
-                    </td>
-                    <td>
-                      <span [class]="'status-pill ' + doc.statusTone">{{ doc.status }}</span>
-                      @if (doc.category === 'retour-correction') {
-                        <div class="rejection-badge">Rejeté par Coord.</div>
-                      }
-                    </td>
-                    <td>{{ doc.lastAction }}</td>
-                    <td>{{ doc.deadline || '—' }}</td>
-                    <td>
-                      <div class="action-buttons">
-                        @if (doc.status === 'ENVOYE' || !doc.status) {
-                          <button class="pilier-action-btn blue" (click)="pilierAction(doc.id, 'acknowledge')" [disabled]="isBusy(doc.id)">Accuser réception</button>
                         }
-                        @if (doc.status === 'RECU') {
-                          <button class="pilier-action-btn orange" (click)="pilierAction(doc.id, 'start-processing')" [disabled]="isBusy(doc.id)">Démarrer</button>
-                        }
-                        @if (doc.status === 'EN_TRAITEMENT' && doc.category !== 'retour-correction') {
-                          <button class="pilier-action-btn green" (click)="pilierAction(doc.id, 'finalize')" [disabled]="isBusy(doc.id)">Finaliser</button>
-                        }
+                      </td>
+                      <td>
+                        <span [class]="'priority-pill ' + getPriorityTone(doc.priority)">{{ doc.priority || '—' }}</span>
+                      </td>
+                      <td>
+                        <span [class]="'status-pill ' + doc.statusTone">{{ doc.status }}</span>
                         @if (doc.category === 'retour-correction') {
-                          <button class="pilier-action-btn green" (click)="pilierAction(doc.id, 'finalize')" [disabled]="isBusy(doc.id)">Corriger & Finaliser</button>
-                          <button class="pilier-action-btn purple" (click)="resubmitToCoordinator(doc.id)" [disabled]="isBusy(doc.id)">Re-soumettre</button>
+                          <div class="rejection-badge">Rejete par Coord.</div>
                         }
-                        @if (doc.status === 'FINALISE') {
-                          <button class="pilier-action-btn purple" (click)="pilierAction(doc.id, 'send-to-coordinator')" [disabled]="isBusy(doc.id)">Envoyer au Coord.</button>
-                        }
-                        @if (doc.status === 'ENVOYE_COORDINATEUR') {
-                          <span class="doc-meta">En attente validation</span>
-                        }
-                        <button class="icon-btn" aria-label="Voir" (click)="viewPilierDocument(doc.id)">👁️</button>
-                      </div>
-                    </td>
-                  </tr>
+                      </td>
+                      <td>{{ doc.lastAction }}</td>
+                      <td>{{ doc.deadline || '—' }}</td>
+                      <td>
+                        <div class="action-buttons">
+                          @if (doc.status === 'ENVOYE' || !doc.status) {
+                            <button class="pilier-action-btn blue" (click)="pilierAction(doc.id, 'acknowledge')" [disabled]="isBusy(doc.id)">Accuser reception</button>
+                          }
+                          @if (doc.status === 'RECU') {
+                            <button class="pilier-action-btn orange" (click)="pilierAction(doc.id, 'start-processing')" [disabled]="isBusy(doc.id)">Demarrer</button>
+                          }
+                          @if (doc.status === 'EN_TRAITEMENT' && doc.category !== 'retour-correction') {
+                            <button class="pilier-action-btn green" (click)="pilierAction(doc.id, 'finalize')" [disabled]="isBusy(doc.id)">Finaliser</button>
+                          }
+                          @if (doc.category === 'retour-correction') {
+                            <button class="pilier-action-btn green" (click)="pilierAction(doc.id, 'finalize')" [disabled]="isBusy(doc.id)">Corriger & Finaliser</button>
+                            <button class="pilier-action-btn purple" (click)="resubmitToCoordinator(doc.id)" [disabled]="isBusy(doc.id)">Re-soumettre</button>
+                          }
+                          @if (doc.status === 'FINALISE') {
+                            <button class="pilier-action-btn purple" (click)="pilierAction(doc.id, 'send-to-coordinator')" [disabled]="isBusy(doc.id)">Envoyer au Coord.</button>
+                          }
+                          @if (doc.status === 'ENVOYE_COORDINATEUR') {
+                            <span class="doc-meta">En attente validation</span>
+                          }
+                          <button class="icon-btn" aria-label="Voir" (click)="viewPilierDocument(doc.id)">👁️</button>
+                        </div>
+                      </td>
+                    </tr>
+                  }
                 }
               </tbody>
             </table>
-            @if (filteredPilierDocuments.length === 0) {
+            @if (!isLoading && filteredPilierDocuments.length === 0) {
               <div class="pilier-empty-state">
                 <div class="pilier-empty-icon">☑</div>
                 <p>Aucun document dans cette catégorie</p>
@@ -189,23 +214,33 @@ interface DashboardDocument {
             <h2 class="page-title pilier-title">Validation Coordinateur</h2>
             <p class="page-subtitle">{{ coordinatorDisplayName }}</p>
           </div>
+          <div class="last-updated">Mise a jour: {{ lastUpdatedLabel }}</div>
         </div>
 
         <div class="pilier-status-cards">
-          @for (card of coordinatorCards; track card.label) {
-            <div
-              class="pilier-card"
-              [class.pilier-card-active]="coordinatorActiveTab === card.tabKey"
-              (click)="setCoordinatorTab(card.tabKey)"
-            >
-              <div class="pilier-card-content">
-                <span class="pilier-card-label">{{ card.label }}</span>
-                <span class="pilier-card-count" [style.color]="card.countColor">{{ card.count }}</span>
+          @if (isLoading) {
+            @for (item of skeletonCards; track item) {
+              <div class="pilier-card skeleton-card">
+                <div class="skeleton-line wide"></div>
+                <div class="skeleton-line count"></div>
               </div>
-              <div class="pilier-card-icon" [style.background]="card.iconBg">
-                <span [style.color]="card.iconColor">{{ card.icon }}</span>
+            }
+          } @else {
+            @for (card of coordinatorCards; track card.label) {
+              <div
+                class="pilier-card"
+                [class.pilier-card-active]="coordinatorActiveTab === card.tabKey"
+                (click)="setCoordinatorTab(card.tabKey)"
+              >
+                <div class="pilier-card-content">
+                  <span class="pilier-card-label">{{ card.label }}</span>
+                  <span class="pilier-card-count" [style.color]="card.countColor">{{ card.count }}</span>
+                </div>
+                <div class="pilier-card-icon" [style.background]="card.iconBg">
+                  <span [style.color]="card.iconColor">{{ card.icon }}</span>
+                </div>
               </div>
-            </div>
+            }
           }
         </div>
 
@@ -237,55 +272,69 @@ interface DashboardDocument {
                 </tr>
               </thead>
               <tbody>
-                @for (doc of filteredCoordinatorDocuments; track doc.id) {
-                  <tr [class.urgent-row]="doc.priority === 'Haute' || doc.priority === 'Urgente'">
-                    <td><div class="doc-number">{{ doc.number }}</div></td>
-                    <td>
-                      <div class="doc-title">{{ doc.object }}</div>
-                      @if (doc.chiefInstruction) {
-                        <div class="doc-meta">{{ doc.chiefInstruction }}</div>
-                      }
-                      @if (doc.coordinatorComment && doc.category === 'rejetes') {
-                        <div class="rejection-feedback">
-                          <span class="rejection-icon">🔄</span>
-                          <span class="rejection-text">Mon feedback: {{ doc.coordinatorComment }}</span>
-                        </div>
-                      }
-                    </td>
-                    <td>
-                      <span [class]="'priority-pill ' + getPriorityTone(doc.priority)">{{ doc.priority || '—' }}</span>
-                    </td>
-                    <td>{{ doc.sender || '—' }}</td>
-                    <td>
-                      @if (doc.category === 'a-valider') {
-                        <span class="status-pill info">En attente</span>
-                      } @else if (doc.category === 'rejetes') {
-                        <span class="status-pill warning">Rejeté</span>
-                      } @else {
-                        <span class="status-pill success">Validé</span>
-                      }
-                    </td>
-                    <td>{{ doc.lastAction }}</td>
-                    <td>
-                      <div class="action-buttons">
+                @if (isLoading) {
+                  @for (row of skeletonRows; track row) {
+                    <tr class="skeleton-row">
+                      <td><div class="skeleton-line wide"></div></td>
+                      <td><div class="skeleton-line"></div><div class="skeleton-line short"></div></td>
+                      <td><div class="skeleton-pill"></div></td>
+                      <td><div class="skeleton-line short"></div></td>
+                      <td><div class="skeleton-pill"></div></td>
+                      <td><div class="skeleton-line short"></div></td>
+                      <td><div class="skeleton-line"></div></td>
+                    </tr>
+                  }
+                } @else {
+                  @for (doc of filteredCoordinatorDocuments; track doc.id) {
+                    <tr [class.urgent-row]="doc.priority === 'Haute' || doc.priority === 'Urgente'">
+                      <td><div class="doc-number">{{ doc.number }}</div></td>
+                      <td>
+                        <div class="doc-title">{{ doc.object }}</div>
+                        @if (doc.chiefInstruction) {
+                          <div class="doc-meta">{{ doc.chiefInstruction }}</div>
+                        }
+                        @if (doc.coordinatorComment && doc.category === 'rejetes') {
+                          <div class="rejection-feedback">
+                            <span class="rejection-icon">🔄</span>
+                            <span class="rejection-text">Mon feedback: {{ doc.coordinatorComment }}</span>
+                          </div>
+                        }
+                      </td>
+                      <td>
+                        <span [class]="'priority-pill ' + getPriorityTone(doc.priority)">{{ doc.priority || '—' }}</span>
+                      </td>
+                      <td>{{ doc.sender || '—' }}</td>
+                      <td>
                         @if (doc.category === 'a-valider') {
-                          <button class="pilier-action-btn green" (click)="coordinatorValidate(doc.id)" [disabled]="isBusy(doc.id)">✔ Valider</button>
-                          <button class="pilier-action-btn red" (click)="coordinatorReject(doc.id)" [disabled]="isBusy(doc.id)">✘ Rejeter</button>
+                          <span class="status-pill info">En attente</span>
+                        } @else if (doc.category === 'rejetes') {
+                          <span class="status-pill warning">Rejete</span>
+                        } @else {
+                          <span class="status-pill success">Valide</span>
                         }
-                        @if (doc.category === 'valides') {
-                          <span class="doc-meta">✔ Validé</span>
-                        }
-                        @if (doc.category === 'rejetes') {
-                          <span class="doc-meta">En correction</span>
-                        }
-                        <button class="icon-btn" aria-label="Voir" (click)="viewPilierDocument(doc.id)">👁️</button>
-                      </div>
-                    </td>
-                  </tr>
+                      </td>
+                      <td>{{ doc.lastAction }}</td>
+                      <td>
+                        <div class="action-buttons">
+                          @if (doc.category === 'a-valider') {
+                            <button class="pilier-action-btn green" (click)="coordinatorValidate(doc.id)" [disabled]="isBusy(doc.id)">✔ Valider</button>
+                            <button class="pilier-action-btn red" (click)="coordinatorReject(doc.id)" [disabled]="isBusy(doc.id)">✘ Rejeter</button>
+                          }
+                          @if (doc.category === 'valides') {
+                            <span class="doc-meta">✔ Valide</span>
+                          }
+                          @if (doc.category === 'rejetes') {
+                            <span class="doc-meta">En correction</span>
+                          }
+                          <button class="icon-btn" aria-label="Voir" (click)="viewPilierDocument(doc.id)">👁️</button>
+                        </div>
+                      </td>
+                    </tr>
+                  }
                 }
               </tbody>
             </table>
-            @if (filteredCoordinatorDocuments.length === 0) {
+            @if (!isLoading && filteredCoordinatorDocuments.length === 0) {
               <div class="pilier-empty-state">
                 <div class="pilier-empty-icon">☑</div>
                 <p>Aucun document dans cette catégorie</p>
@@ -299,23 +348,33 @@ interface DashboardDocument {
             <h2 class="page-title pilier-title">Mes Documents - Service</h2>
             <p class="page-subtitle">{{ serviceDisplayName }}</p>
           </div>
+          <div class="last-updated">Mise a jour: {{ lastUpdatedLabel }}</div>
         </div>
 
         <div class="pilier-status-cards">
-          @for (card of serviceCards; track card.label) {
-            <div
-              class="pilier-card"
-              [class.pilier-card-active]="serviceActiveTab === card.tabKey"
-              (click)="setServiceTab(card.tabKey)"
-            >
-              <div class="pilier-card-content">
-                <span class="pilier-card-label">{{ card.label }}</span>
-                <span class="pilier-card-count" [style.color]="card.countColor">{{ card.count }}</span>
+          @if (isLoading) {
+            @for (item of skeletonCards; track item) {
+              <div class="pilier-card skeleton-card">
+                <div class="skeleton-line wide"></div>
+                <div class="skeleton-line count"></div>
               </div>
-              <div class="pilier-card-icon" [style.background]="card.iconBg">
-                <span [style.color]="card.iconColor">{{ card.icon }}</span>
+            }
+          } @else {
+            @for (card of serviceCards; track card.label) {
+              <div
+                class="pilier-card"
+                [class.pilier-card-active]="serviceActiveTab === card.tabKey"
+                (click)="setServiceTab(card.tabKey)"
+              >
+                <div class="pilier-card-content">
+                  <span class="pilier-card-label">{{ card.label }}</span>
+                  <span class="pilier-card-count" [style.color]="card.countColor">{{ card.count }}</span>
+                </div>
+                <div class="pilier-card-icon" [style.background]="card.iconBg">
+                  <span [style.color]="card.iconColor">{{ card.icon }}</span>
+                </div>
               </div>
-            </div>
+            }
           }
         </div>
 
@@ -347,49 +406,63 @@ interface DashboardDocument {
                 </tr>
               </thead>
               <tbody>
-                @for (doc of filteredServiceDocuments; track doc.id) {
-                  <tr [class.urgent-row]="doc.priority === 'Haute' || doc.priority === 'Urgente'">
-                    <td><div class="doc-number">{{ doc.number }}</div></td>
-                    <td>
-                      <div class="doc-title">{{ doc.object }}</div>
-                      @if (doc.chiefInstruction) {
-                        <div class="doc-meta">{{ doc.chiefInstruction }}</div>
-                      }
-                    </td>
-                    <td>
-                      <span [class]="'priority-pill ' + getPriorityTone(doc.priority)">{{ doc.priority || '—' }}</span>
-                    </td>
-                    <td>
-                      <span [class]="'status-pill ' + doc.statusTone">{{ doc.status }}</span>
-                    </td>
-                    <td>{{ doc.lastAction }}</td>
-                    <td>{{ doc.deadline || '—' }}</td>
-                    <td>
-                      <div class="action-buttons">
-                        @if (doc.status === 'ENVOYE' || !doc.status) {
-                          <button class="pilier-action-btn blue" (click)="serviceAction(doc.id, 'acknowledge')" [disabled]="isBusy(doc.id)">Accuser réception</button>
+                @if (isLoading) {
+                  @for (row of skeletonRows; track row) {
+                    <tr class="skeleton-row">
+                      <td><div class="skeleton-line wide"></div></td>
+                      <td><div class="skeleton-line"></div><div class="skeleton-line short"></div></td>
+                      <td><div class="skeleton-pill"></div></td>
+                      <td><div class="skeleton-pill"></div></td>
+                      <td><div class="skeleton-line short"></div></td>
+                      <td><div class="skeleton-line short"></div></td>
+                      <td><div class="skeleton-line"></div></td>
+                    </tr>
+                  }
+                } @else {
+                  @for (doc of filteredServiceDocuments; track doc.id) {
+                    <tr [class.urgent-row]="doc.priority === 'Haute' || doc.priority === 'Urgente'">
+                      <td><div class="doc-number">{{ doc.number }}</div></td>
+                      <td>
+                        <div class="doc-title">{{ doc.object }}</div>
+                        @if (doc.chiefInstruction) {
+                          <div class="doc-meta">{{ doc.chiefInstruction }}</div>
                         }
-                        @if (doc.status === 'RECU') {
-                          <button class="pilier-action-btn orange" (click)="serviceAction(doc.id, 'start-processing')" [disabled]="isBusy(doc.id)">Démarrer</button>
-                        }
-                        @if (doc.status === 'EN_TRAITEMENT') {
-                          <button class="pilier-action-btn green" (click)="serviceAction(doc.id, 'finalize')" [disabled]="isBusy(doc.id)">Finaliser</button>
-                        }
-                        @if (doc.status === 'FINALISE') {
-                          <button class="pilier-action-btn purple" (click)="serviceAction(doc.id, 'send-to-coordinator')" [disabled]="isBusy(doc.id)">Envoyer au Coord.</button>
-                          <button class="pilier-action-btn blue" (click)="serviceAction(doc.id, 'send-to-assistant')" [disabled]="isBusy(doc.id)">Envoyer à l'Assistante</button>
-                        }
-                        @if (doc.status === 'ENVOYE_COORDINATEUR') {
-                          <span class="doc-meta">En attente validation</span>
-                        }
-                        <button class="icon-btn" aria-label="Voir" (click)="viewPilierDocument(doc.id)">👁️</button>
-                      </div>
-                    </td>
-                  </tr>
+                      </td>
+                      <td>
+                        <span [class]="'priority-pill ' + getPriorityTone(doc.priority)">{{ doc.priority || '—' }}</span>
+                      </td>
+                      <td>
+                        <span [class]="'status-pill ' + doc.statusTone">{{ doc.status }}</span>
+                      </td>
+                      <td>{{ doc.lastAction }}</td>
+                      <td>{{ doc.deadline || '—' }}</td>
+                      <td>
+                        <div class="action-buttons">
+                          @if (doc.status === 'ENVOYE' || !doc.status) {
+                            <button class="pilier-action-btn blue" (click)="serviceAction(doc.id, 'acknowledge')" [disabled]="isBusy(doc.id)">Accuser reception</button>
+                          }
+                          @if (doc.status === 'RECU') {
+                            <button class="pilier-action-btn orange" (click)="serviceAction(doc.id, 'start-processing')" [disabled]="isBusy(doc.id)">Demarrer</button>
+                          }
+                          @if (doc.status === 'EN_TRAITEMENT') {
+                            <button class="pilier-action-btn green" (click)="serviceAction(doc.id, 'finalize')" [disabled]="isBusy(doc.id)">Finaliser</button>
+                          }
+                          @if (doc.status === 'FINALISE') {
+                            <button class="pilier-action-btn purple" (click)="serviceAction(doc.id, 'send-to-coordinator')" [disabled]="isBusy(doc.id)">Envoyer au Coord.</button>
+                            <button class="pilier-action-btn blue" (click)="serviceAction(doc.id, 'send-to-assistant')" [disabled]="isBusy(doc.id)">Envoyer a l'Assistante</button>
+                          }
+                          @if (doc.status === 'ENVOYE_COORDINATEUR') {
+                            <span class="doc-meta">En attente validation</span>
+                          }
+                          <button class="icon-btn" aria-label="Voir" (click)="viewPilierDocument(doc.id)">👁️</button>
+                        </div>
+                      </td>
+                    </tr>
+                  }
                 }
               </tbody>
             </table>
-            @if (filteredServiceDocuments.length === 0) {
+            @if (!isLoading && filteredServiceDocuments.length === 0) {
               <div class="pilier-empty-state">
                 <div class="pilier-empty-icon">☑</div>
                 <p>Aucun document dans cette catégorie</p>
@@ -403,17 +476,28 @@ interface DashboardDocument {
             <h2 class="sec-page-title">Dashboard Secrétariat</h2>
             <p class="sec-page-subtitle">Bienvenue {{ secretariatDisplayName }} - Mise en forme administrative</p>
           </div>
+          <div class="last-updated">Mise a jour: {{ lastUpdatedLabel }}</div>
         </div>
 
         <div class="sec-kpi-grid">
-          @for (card of secretariatCards; track card.label) {
-            <div class="sec-kpi-card" [style.border-color]="card.borderColor">
-              <div class="sec-kpi-icon" [style.background]="card.iconBg">
-                <span [style.color]="card.iconColor">{{ card.icon }}</span>
+          @if (isLoading) {
+            @for (item of skeletonCards; track item) {
+              <div class="sec-kpi-card skeleton-card">
+                <div class="skeleton-line wide"></div>
+                <div class="skeleton-line count"></div>
+                <div class="skeleton-line short"></div>
               </div>
-              <div class="sec-kpi-count">{{ card.count }}</div>
-              <div class="sec-kpi-label">{{ card.label }}</div>
-            </div>
+            }
+          } @else {
+            @for (card of secretariatCards; track card.label) {
+              <div class="sec-kpi-card" [style.border-color]="card.borderColor">
+                <div class="sec-kpi-icon" [style.background]="card.iconBg">
+                  <span [style.color]="card.iconColor">{{ card.icon }}</span>
+                </div>
+                <div class="sec-kpi-count">{{ card.count }}</div>
+                <div class="sec-kpi-label">{{ card.label }}</div>
+              </div>
+            }
           }
         </div>
 
@@ -425,17 +509,46 @@ interface DashboardDocument {
             </div>
             <button class="sec-see-all" (click)="navigateTo('/documents')">Voir tout →</button>
           </div>
-          @if (secretariatDocuments.length > 0) {
+          @if (isLoading) {
             <div class="table-wrapper">
               <table class="documents-table">
                 <thead>
                   <tr>
-                    <th>Numéro</th>
+                    <th>Numero</th>
                     <th>Objet</th>
-                    <th>Expéditeur</th>
-                    <th>Priorité</th>
+                    <th>Expediteur</th>
+                    <th>Priorite</th>
                     <th>Statut</th>
-                    <th>Date réception</th>
+                    <th>Date reception</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of skeletonRows; track row) {
+                    <tr class="skeleton-row">
+                      <td><div class="skeleton-line wide"></div></td>
+                      <td><div class="skeleton-line"></div></td>
+                      <td><div class="skeleton-line short"></div></td>
+                      <td><div class="skeleton-pill"></div></td>
+                      <td><div class="skeleton-pill"></div></td>
+                      <td><div class="skeleton-line short"></div></td>
+                      <td><div class="skeleton-line"></div></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else if (secretariatDocuments.length > 0) {
+            <div class="table-wrapper">
+              <table class="documents-table">
+                <thead>
+                  <tr>
+                    <th>Numero</th>
+                    <th>Objet</th>
+                    <th>Expediteur</th>
+                    <th>Priorite</th>
+                    <th>Statut</th>
+                    <th>Date reception</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -462,12 +575,49 @@ interface DashboardDocument {
           } @else {
             <div class="sec-empty-state">
               <div class="sec-empty-icon">📋</div>
-              <p>Aucun document à formater pour le moment</p>
+              <p>Aucun document a formater pour le moment</p>
             </div>
           }
         </div>
 
-        @if (secretariatFormattedDocuments.length > 0) {
+        @if (isLoading) {
+          <div class="sec-panel">
+            <div class="sec-panel-header">
+              <div class="sec-panel-title">
+                <span class="sec-panel-title-icon">✔</span>
+                <strong>Documents formates — prets a envoyer</strong>
+              </div>
+            </div>
+            <div class="table-wrapper">
+              <table class="documents-table">
+                <thead>
+                  <tr>
+                    <th>Numero</th>
+                    <th>Objet</th>
+                    <th>Expediteur</th>
+                    <th>Priorite</th>
+                    <th>Statut</th>
+                    <th>Formate le</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of skeletonRows; track row) {
+                    <tr class="skeleton-row">
+                      <td><div class="skeleton-line wide"></div></td>
+                      <td><div class="skeleton-line"></div></td>
+                      <td><div class="skeleton-line short"></div></td>
+                      <td><div class="skeleton-pill"></div></td>
+                      <td><div class="skeleton-pill"></div></td>
+                      <td><div class="skeleton-line short"></div></td>
+                      <td><div class="skeleton-line"></div></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        } @else if (secretariatFormattedDocuments.length > 0) {
           <div class="sec-panel">
             <div class="sec-panel-header">
               <div class="sec-panel-title">
@@ -479,12 +629,12 @@ interface DashboardDocument {
               <table class="documents-table">
                 <thead>
                   <tr>
-                    <th>Numéro</th>
+                    <th>Numero</th>
                     <th>Objet</th>
-                    <th>Expéditeur</th>
-                    <th>Priorité</th>
+                    <th>Expediteur</th>
+                    <th>Priorite</th>
                     <th>Statut</th>
-                    <th>Formaté le</th>
+                    <th>Formate le</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -499,7 +649,7 @@ interface DashboardDocument {
                       <td>{{ doc.lastAction }}</td>
                       <td>
                         <div class="action-buttons">
-                          <button class="pilier-action-btn green" (click)="secretariatSendToAssistant(doc.id)" [disabled]="isBusy(doc.id)">Envoyer à l'Assistante</button>
+                          <button class="pilier-action-btn green" (click)="secretariatSendToAssistant(doc.id)" [disabled]="isBusy(doc.id)">Envoyer a l'Assistante</button>
                           <button class="icon-btn" aria-label="Voir" (click)="navigateTo('/documents')">👁️</button>
                         </div>
                       </td>
@@ -529,25 +679,38 @@ interface DashboardDocument {
         <div class="assistant-page-heading">
           <div>
             <h2 class="assistant-page-title">Dashboard Assistante</h2>
-            <p class="assistant-page-subtitle">Bonjour {{ assistantDisplayName }}, voici un aperçu de votre activité</p>
+            <p class="assistant-page-subtitle">Bonjour {{ assistantDisplayName }}, voici un aperçu de votre activite</p>
           </div>
-          <div class="assistant-date">{{ todayLabel }}</div>
+          <div class="assistant-meta">
+            <div class="assistant-date">{{ todayLabel }}</div>
+            <div class="last-updated">Mise a jour: {{ lastUpdatedLabel }}</div>
+          </div>
         </div>
 
         <div class="assistant-kpi-grid">
-          @for (card of assistantCards; track card.title) {
-            <div
-              class="assistant-kpi-card"
-              [class.assistant-kpi-card-clickable]="!!card.route"
-              (click)="card.route ? navigateTo(card.route) : null"
-            >
-              <div class="assistant-kpi-top">
-                <div class="assistant-kpi-title">{{ card.title }}</div>
-                <div [class]="'assistant-kpi-icon ' + card.iconTone">{{ card.icon }}</div>
+          @if (isLoading) {
+            @for (item of skeletonCards; track item) {
+              <div class="assistant-kpi-card skeleton-card">
+                <div class="skeleton-line wide"></div>
+                <div class="skeleton-line count"></div>
+                <div class="skeleton-line short"></div>
               </div>
-              <div class="assistant-kpi-count">{{ card.count }}</div>
-              <div class="assistant-kpi-note">{{ card.note }}</div>
-            </div>
+            }
+          } @else {
+            @for (card of assistantCards; track card.title) {
+              <div
+                class="assistant-kpi-card"
+                [class.assistant-kpi-card-clickable]="!!card.route"
+                (click)="card.route ? navigateTo(card.route) : null"
+              >
+                <div class="assistant-kpi-top">
+                  <div class="assistant-kpi-title">{{ card.title }}</div>
+                  <div [class]="'assistant-kpi-icon ' + card.iconTone">{{ card.icon }}</div>
+                </div>
+                <div class="assistant-kpi-count">{{ card.count }}</div>
+                <div class="assistant-kpi-note">{{ card.note }}</div>
+              </div>
+            }
           }
         </div>
 
@@ -583,18 +746,30 @@ interface DashboardDocument {
             <div class="assistant-panel-title">Derniers documents reçus</div>
             <button class="assistant-see-all" (click)="goToSearch()">Voir tout →</button>
           </div>
-          @for (doc of recentAssistantDocuments; track doc.id) {
-            <div class="assistant-doc-row">
-              <div>
-                <div class="assistant-doc-meta">{{ doc.number }} <span [class]="'assistant-priority-pill ' + getPriorityTone(doc.priority)">{{ doc.priority || 'Normale' }}</span></div>
-                <div class="assistant-doc-subject">{{ doc.object }}</div>
-                <div class="assistant-doc-footer">Expéditeur: {{ doc.owner }} • {{ doc.lastAction }}</div>
+          @if (isLoading) {
+            @for (item of skeletonRows; track item) {
+              <div class="assistant-doc-row skeleton-row">
+                <div class="skeleton-block">
+                  <div class="skeleton-line wide"></div>
+                  <div class="skeleton-line"></div>
+                  <div class="skeleton-line short"></div>
+                </div>
               </div>
-              <button class="assistant-open-btn" (click)="classifyDocument(doc.id)" [disabled]="isBusy(doc.id)">Ouvrir</button>
-            </div>
-          }
-          @if (!recentAssistantDocuments.length && !isLoading) {
-            <div class="assistant-empty">Aucun document reçu.</div>
+            }
+          } @else {
+            @for (doc of recentAssistantDocuments; track doc.id) {
+              <div class="assistant-doc-row">
+                <div>
+                  <div class="assistant-doc-meta">{{ doc.number }} <span [class]="'assistant-priority-pill ' + getPriorityTone(doc.priority)">{{ doc.priority || 'Normale' }}</span></div>
+                  <div class="assistant-doc-subject">{{ doc.object }}</div>
+                  <div class="assistant-doc-footer">Expediteur: {{ doc.owner }} • {{ doc.lastAction }}</div>
+                </div>
+                <button class="assistant-open-btn" (click)="classifyDocument(doc.id)" [disabled]="isBusy(doc.id)">Ouvrir</button>
+              </div>
+            }
+            @if (!recentAssistantDocuments.length) {
+              <div class="assistant-empty">Aucun document recu.</div>
+            }
           }
         </div>
       } @else if (isAuditeurMode) {
@@ -603,44 +778,54 @@ interface DashboardDocument {
             <h2 class="page-title">Dashboard Audit & Contrôle</h2>
             <p class="page-subtitle">Vue d'ensemble de la traçabilité des documents — {{ todayLabel }}</p>
           </div>
+          <div class="last-updated">Mise a jour: {{ lastUpdatedLabel }}</div>
         </div>
 
         <div class="pilier-status-cards">
-          <div class="pilier-card" [class.pilier-card-active]="auditeurActiveTab === 'all'" (click)="setAuditeurTab('all')">
-            <div class="pilier-card-content">
-              <span class="pilier-card-label">Total documents</span>
-              <span class="pilier-card-count" style="color: #0b3a78">{{ auditeurCards.total }}</span>
+          @if (isLoading) {
+            @for (item of skeletonCards; track item) {
+              <div class="pilier-card skeleton-card">
+                <div class="skeleton-line wide"></div>
+                <div class="skeleton-line count"></div>
+              </div>
+            }
+          } @else {
+            <div class="pilier-card" [class.pilier-card-active]="auditeurActiveTab === 'all'" (click)="setAuditeurTab('all')">
+              <div class="pilier-card-content">
+                <span class="pilier-card-label">Total documents</span>
+                <span class="pilier-card-count" style="color: #0b3a78">{{ auditeurCards.total }}</span>
+              </div>
+              <div class="pilier-card-icon" style="background: #dbeafe"><span style="color: #1d4ed8">📋</span></div>
             </div>
-            <div class="pilier-card-icon" style="background: #dbeafe"><span style="color: #1d4ed8">📋</span></div>
-          </div>
-          <div class="pilier-card" [class.pilier-card-active]="auditeurActiveTab === 'late'" (click)="setAuditeurTab('late')">
-            <div class="pilier-card-content">
-              <span class="pilier-card-label">En retard</span>
-              <span class="pilier-card-count" style="color: #dc2626">{{ auditeurCards.late }}</span>
+            <div class="pilier-card" [class.pilier-card-active]="auditeurActiveTab === 'late'" (click)="setAuditeurTab('late')">
+              <div class="pilier-card-content">
+                <span class="pilier-card-label">En retard</span>
+                <span class="pilier-card-count" style="color: #dc2626">{{ auditeurCards.late }}</span>
+              </div>
+              <div class="pilier-card-icon" style="background: #fee2e2"><span style="color: #dc2626">⚠</span></div>
             </div>
-            <div class="pilier-card-icon" style="background: #fee2e2"><span style="color: #dc2626">⚠</span></div>
-          </div>
-          <div class="pilier-card" [class.pilier-card-active]="auditeurActiveTab === 'ontime'" (click)="setAuditeurTab('ontime')">
-            <div class="pilier-card-content">
-              <span class="pilier-card-label">Dans les délais</span>
-              <span class="pilier-card-count" style="color: #16a34a">{{ auditeurCards.onTime }}</span>
+            <div class="pilier-card" [class.pilier-card-active]="auditeurActiveTab === 'ontime'" (click)="setAuditeurTab('ontime')">
+              <div class="pilier-card-content">
+                <span class="pilier-card-label">Dans les delais</span>
+                <span class="pilier-card-count" style="color: #16a34a">{{ auditeurCards.onTime }}</span>
+              </div>
+              <div class="pilier-card-icon" style="background: #dcfce7"><span style="color: #16a34a">✔</span></div>
             </div>
-            <div class="pilier-card-icon" style="background: #dcfce7"><span style="color: #16a34a">✔</span></div>
-          </div>
-          <div class="pilier-card" [class.pilier-card-active]="auditeurActiveTab === 'completed'" (click)="setAuditeurTab('completed')">
-            <div class="pilier-card-content">
-              <span class="pilier-card-label">Clôturés</span>
-              <span class="pilier-card-count" style="color: #6366f1">{{ auditeurCards.completed }}</span>
+            <div class="pilier-card" [class.pilier-card-active]="auditeurActiveTab === 'completed'" (click)="setAuditeurTab('completed')">
+              <div class="pilier-card-content">
+                <span class="pilier-card-label">Clotures</span>
+                <span class="pilier-card-count" style="color: #6366f1">{{ auditeurCards.completed }}</span>
+              </div>
+              <div class="pilier-card-icon" style="background: #ede9fe"><span style="color: #6366f1">☑</span></div>
             </div>
-            <div class="pilier-card-icon" style="background: #ede9fe"><span style="color: #6366f1">☑</span></div>
-          </div>
-          <div class="pilier-card">
-            <div class="pilier-card-content">
-              <span class="pilier-card-label">Urgents</span>
-              <span class="pilier-card-count" style="color: #ea580c">{{ auditeurCards.urgent }}</span>
+            <div class="pilier-card">
+              <div class="pilier-card-content">
+                <span class="pilier-card-label">Urgents</span>
+                <span class="pilier-card-count" style="color: #ea580c">{{ auditeurCards.urgent }}</span>
+              </div>
+              <div class="pilier-card-icon" style="background: #ffedd5"><span style="color: #ea580c">🔥</span></div>
             </div>
-            <div class="pilier-card-icon" style="background: #ffedd5"><span style="color: #ea580c">🔥</span></div>
-          </div>
+          }
         </div>
 
         <div class="pilier-table-card">
@@ -674,29 +859,44 @@ interface DashboardDocument {
                 </tr>
               </thead>
               <tbody>
-                @for (doc of filteredAuditeurDocuments; track doc.id) {
-                  <tr [class.urgent-row]="doc.isLate">
-                    <td><div class="doc-number">{{ doc.number }}</div></td>
-                    <td><div class="doc-title">{{ doc.subject }}</div></td>
-                    <td><span [class]="'priority-pill ' + getPriorityTone(doc.priority)">{{ doc.priority }}</span></td>
-                    <td>{{ doc.sender }}</td>
-                    <td>{{ doc.owner }}</td>
-                    <td><span class="status-pill" [class.status-late]="doc.isLate">{{ doc.status }}</span></td>
-                    <td>{{ doc.chiefDecision }}</td>
-                    <td>
-                      @if (doc.deadline) {
-                        <span [class]="doc.isLate ? 'delay-pill' : 'doc-meta'">
-                          {{ formatDate(doc.deadline) }}
-                        </span>
-                      } @else {
-                        —
-                      }
-                    </td>
-                  </tr>
+                @if (isLoading) {
+                  @for (row of skeletonRows; track row) {
+                    <tr class="skeleton-row">
+                      <td><div class="skeleton-line wide"></div></td>
+                      <td><div class="skeleton-line"></div></td>
+                      <td><div class="skeleton-pill"></div></td>
+                      <td><div class="skeleton-line short"></div></td>
+                      <td><div class="skeleton-line short"></div></td>
+                      <td><div class="skeleton-pill"></div></td>
+                      <td><div class="skeleton-line short"></div></td>
+                      <td><div class="skeleton-line short"></div></td>
+                    </tr>
+                  }
+                } @else {
+                  @for (doc of filteredAuditeurDocuments; track doc.id) {
+                    <tr [class.urgent-row]="doc.isLate">
+                      <td><div class="doc-number">{{ doc.number }}</div></td>
+                      <td><div class="doc-title">{{ doc.subject }}</div></td>
+                      <td><span [class]="'priority-pill ' + getPriorityTone(doc.priority)">{{ doc.priority }}</span></td>
+                      <td>{{ doc.sender }}</td>
+                      <td>{{ doc.owner }}</td>
+                      <td><span class="status-pill" [class.status-late]="doc.isLate">{{ doc.status }}</span></td>
+                      <td>{{ doc.chiefDecision }}</td>
+                      <td>
+                        @if (doc.deadline) {
+                          <span [class]="doc.isLate ? 'delay-pill' : 'doc-meta'">
+                            {{ formatDate(doc.deadline) }}
+                          </span>
+                        } @else {
+                          —
+                        }
+                      </td>
+                    </tr>
+                  }
                 }
               </tbody>
             </table>
-            @if (filteredAuditeurDocuments.length === 0) {
+            @if (!isLoading && filteredAuditeurDocuments.length === 0) {
               <div class="pilier-empty-state">
                 <div class="pilier-empty-icon">☑</div>
                 <p>Aucun document dans cette catégorie</p>
@@ -710,11 +910,22 @@ interface DashboardDocument {
             <h2 class="page-title">{{ pageTitle }}</h2>
             <p class="page-subtitle">{{ pageSubtitle }}</p>
           </div>
+          <div class="last-updated">Mise a jour: {{ lastUpdatedLabel }}</div>
         </div>
 
         <div class="status-cards-grid">
-          @for (card of statusCards; track card.title) {
-            <app-status-card [card]="card" />
+          @if (isLoading) {
+            @for (item of skeletonCards; track item) {
+              <div class="status-card skeleton-card">
+                <div class="skeleton-line wide"></div>
+                <div class="skeleton-line count"></div>
+                <div class="skeleton-line short"></div>
+              </div>
+            }
+          } @else {
+            @for (card of statusCards; track card.title) {
+              <app-status-card [card]="card" />
+            }
           }
         </div>
 
@@ -755,40 +966,55 @@ interface DashboardDocument {
                 </tr>
               </thead>
               <tbody>
-                @for (doc of documents; track doc.number) {
-                  <tr [class.urgent-row]="doc.priority === 'Haute' || doc.priority === 'Urgente'">
-                    <td>
-                      <div class="doc-number">{{ doc.number }}</div>
-                    </td>
-                    <td>
-                      <div class="doc-title">{{ doc.object }}</div>
-                      <div class="doc-meta">{{ doc.type }}</div>
-                    </td>
-                    <td>
-                      <div class="doc-owner">{{ doc.owner }}</div>
-                      <div class="doc-meta">{{ doc.ownerRole }}</div>
-                    </td>
-                    <td>
-                      <span [class]="'priority-pill ' + getPriorityTone(doc.priority)">{{ doc.priority || 'Normale' }}</span>
-                    </td>
-                    <td>
-                      <span [class]="'status-pill ' + doc.statusTone">{{ doc.status }}</span>
-                    </td>
-                    <td>
-                      <div class="doc-owner">{{ doc.lastAction }}</div>
-                      <div class="doc-meta">{{ doc.lastActionNote }}</div>
-                    </td>
-                    <td>
-                      <span [class]="'delay-pill ' + doc.delayTone">{{ doc.delay }}</span>
-                    </td>
-                    <td>
-                      <div class="action-buttons">
-                        <button class="icon-btn" aria-label="Classer" (click)="classifyDocument(doc.id)" [disabled]="isBusy(doc.id)">👁️</button>
-                        <button class="icon-btn" aria-label="Traiter" (click)="isAssistantMode ? markTreated(doc.id) : quickCloseAsChief(doc.id)" [disabled]="isBusy(doc.id)">⏱️</button>
-                        <button class="icon-btn" aria-label="Envoyer" (click)="isAssistantMode ? sendToChief(doc.id) : quickSendToSecretariat(doc.id)" [disabled]="isBusy(doc.id)">📨</button>
-                      </div>
-                    </td>
-                  </tr>
+                @if (isLoading) {
+                  @for (row of skeletonRows; track row) {
+                    <tr class="skeleton-row">
+                      <td><div class="skeleton-line wide"></div></td>
+                      <td><div class="skeleton-line"></div><div class="skeleton-line short"></div></td>
+                      <td><div class="skeleton-line short"></div></td>
+                      <td><div class="skeleton-pill"></div></td>
+                      <td><div class="skeleton-pill"></div></td>
+                      <td><div class="skeleton-line short"></div></td>
+                      <td><div class="skeleton-pill"></div></td>
+                      <td><div class="skeleton-line"></div></td>
+                    </tr>
+                  }
+                } @else {
+                  @for (doc of documents; track doc.number) {
+                    <tr [class.urgent-row]="doc.priority === 'Haute' || doc.priority === 'Urgente'">
+                      <td>
+                        <div class="doc-number">{{ doc.number }}</div>
+                      </td>
+                      <td>
+                        <div class="doc-title">{{ doc.object }}</div>
+                        <div class="doc-meta">{{ doc.type }}</div>
+                      </td>
+                      <td>
+                        <div class="doc-owner">{{ doc.owner }}</div>
+                        <div class="doc-meta">{{ doc.ownerRole }}</div>
+                      </td>
+                      <td>
+                        <span [class]="'priority-pill ' + getPriorityTone(doc.priority)">{{ doc.priority || 'Normale' }}</span>
+                      </td>
+                      <td>
+                        <span [class]="'status-pill ' + doc.statusTone">{{ doc.status }}</span>
+                      </td>
+                      <td>
+                        <div class="doc-owner">{{ doc.lastAction }}</div>
+                        <div class="doc-meta">{{ doc.lastActionNote }}</div>
+                      </td>
+                      <td>
+                        <span [class]="'delay-pill ' + doc.delayTone">{{ doc.delay }}</span>
+                      </td>
+                      <td>
+                        <div class="action-buttons">
+                          <button class="icon-btn" aria-label="Classer" (click)="classifyDocument(doc.id)" [disabled]="isBusy(doc.id)">👁️</button>
+                          <button class="icon-btn" aria-label="Traiter" (click)="isAssistantMode ? markTreated(doc.id) : quickCloseAsChief(doc.id)" [disabled]="isBusy(doc.id)">⏱️</button>
+                          <button class="icon-btn" aria-label="Envoyer" (click)="isAssistantMode ? sendToChief(doc.id) : quickSendToSecretariat(doc.id)" [disabled]="isBusy(doc.id)">📨</button>
+                        </div>
+                      </td>
+                    </tr>
+                  }
                 }
               </tbody>
             </table>
@@ -810,6 +1036,17 @@ interface DashboardDocument {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
+    }
+
+    .last-updated {
+      font-size: 10px;
+      color: #64748b;
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 999px;
+      padding: 6px 10px;
+      align-self: flex-start;
+      white-space: nowrap;
     }
 
     .page-title {
@@ -850,6 +1087,20 @@ interface DashboardDocument {
       font-size: 11px;
       margin-top: 8px;
       text-transform: capitalize;
+    }
+
+    .assistant-meta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+    }
+
+    .sec-page-heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
     }
 
     .assistant-kpi-grid {
@@ -1509,6 +1760,67 @@ interface DashboardDocument {
       margin-top: 4px;
     }
     .rejection-icon { font-size: 14px; flex-shrink: 0; }
+
+    .skeleton-card {
+      position: relative;
+      overflow: hidden;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .skeleton-block {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .skeleton-line,
+    .skeleton-pill {
+      background: linear-gradient(90deg, #e2e8f0 0%, #f8fafc 50%, #e2e8f0 100%);
+      background-size: 200% 100%;
+      animation: shimmer 1.6s infinite linear;
+    }
+
+    .skeleton-line {
+      height: 10px;
+      border-radius: 999px;
+    }
+
+    .skeleton-line.wide {
+      width: 70%;
+    }
+
+    .skeleton-line.short {
+      width: 40%;
+    }
+
+    .skeleton-line.count {
+      width: 50%;
+      height: 18px;
+      margin-top: 8px;
+    }
+
+    .skeleton-pill {
+      height: 16px;
+      width: 70px;
+      border-radius: 999px;
+    }
+
+    .skeleton-row td {
+      padding: 12px 10px;
+    }
+
+    @keyframes shimmer {
+      0% {
+        background-position: 200% 0;
+      }
+      100% {
+        background-position: -200% 0;
+      }
+    }
     .rejection-text { font-size: 11px; color: #991b1b; line-height: 1.4; }
 
     .rejection-feedback-card {
@@ -1858,6 +2170,7 @@ export class DashboardComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   pageTitle = 'Dashboard Chef';
   pageSubtitle = "Centre de contrôle — Vue d'ensemble en 5 secondes";
@@ -1869,9 +2182,13 @@ export class DashboardComponent implements OnInit {
   isCoordinatorMode = false;
   isAuditeurMode = false;
   isLoading = false;
+  private readonly loadingTimeoutMs = 15000;
   pendingDocumentIds = new Set<number>();
   assistantDisplayName = 'Assistante';
   todayLabel = '';
+  lastUpdatedAt: Date | null = null;
+  readonly skeletonCards = Array.from({ length: 4 }, (_, index) => index);
+  readonly skeletonRows = Array.from({ length: 6 }, (_, index) => index);
 
   // Pilier mode properties
   pilierServiceName = '';
@@ -2405,148 +2722,147 @@ export class DashboardComponent implements OnInit {
   }
 
   private loadPilierDashboard(): void {
-    this.isLoading = true;
-    this.http.get<any>(`${API_BASE_URL}/pilier/dashboard`).subscribe({
+    this.withLoading(this.http.get<any>(`${API_BASE_URL}/pilier/dashboard`)).subscribe({
       next: (response) => {
-        if (response?.cards) {
-          this.pilierCards[0].count = response.cards.toReceive ?? 0;
-          this.pilierCards[1].count = response.cards.inProgress ?? 0;
-          this.pilierCards[2].count = response.cards.rejected ?? 0;
-          this.pilierCards[3].count = response.cards.atCoordinator ?? 0;
-        }
+        try {
+          if (response?.cards) {
+            this.pilierCards[0].count = response.cards.toReceive ?? 0;
+            this.pilierCards[1].count = response.cards.inProgress ?? 0;
+            this.pilierCards[2].count = response.cards.rejected ?? 0;
+            this.pilierCards[3].count = response.cards.atCoordinator ?? 0;
+          }
 
-        if (response?.serviceName) {
-          this.pilierServiceName = response.serviceName;
-        }
+          if (response?.serviceName) {
+            this.pilierServiceName = response.serviceName;
+          }
 
-        if (response?.documents) {
-          this.pilierDocuments = response.documents.map((doc: any) => ({
-            id: doc.id,
-            number: doc.number,
-            object: doc.object,
-            type: doc.type || '',
-            owner: doc.owner || '',
-            ownerRole: doc.ownerRole || '',
-            status: doc.status,
-            statusTone: doc.statusTone || 'info',
-            lastAction: this.formatDate(doc.lastActionAt || doc.lastAction || ''),
-            lastActionNote: doc.lastActionNote || '',
-            delay: doc.delay || '',
-            delayTone: doc.delayTone || 'muted',
-            category: doc.category || 'a-receptionner',
-            deadline: doc.deadline ? this.formatDate(doc.deadline) : undefined,
-            chiefInstruction: doc.chiefInstruction || '',
-            coordinatorComment: doc.coordinatorComment || '',
-            priority: doc.priority || doc.chiefPriority || 'Normale'
-          }));
+          if (response?.documents) {
+            this.pilierDocuments = response.documents.map((doc: any) => ({
+              id: doc.id,
+              number: doc.number,
+              object: doc.object,
+              type: doc.type || '',
+              owner: doc.owner || '',
+              ownerRole: doc.ownerRole || '',
+              status: doc.status,
+              statusTone: doc.statusTone || 'info',
+              lastAction: this.formatDate(doc.lastActionAt || doc.lastAction || ''),
+              lastActionNote: doc.lastActionNote || '',
+              delay: doc.delay || '',
+              delayTone: doc.delayTone || 'muted',
+              category: doc.category || 'a-receptionner',
+              deadline: doc.deadline ? this.formatDate(doc.deadline) : undefined,
+              chiefInstruction: doc.chiefInstruction || '',
+              coordinatorComment: doc.coordinatorComment || '',
+              priority: doc.priority || doc.chiefPriority || 'Normale'
+            }));
+          }
+          this.setLastUpdated();
+        } catch (error) {
+          console.error('Pilier dashboard processing failed', error);
         }
-
-        this.isLoading = false;
-      },
-      error: () => {
-        this.isLoading = false;
       }
     });
   }
 
   private loadAssistantDashboard(): void {
-    this.isLoading = true;
-    this.http.get<AssistantDashboardResponse>(`${API_BASE_URL}/assistant/dashboard`).subscribe({
+    this.withLoading(this.http.get<AssistantDashboardResponse>(`${API_BASE_URL}/assistant/dashboard`)).subscribe({
       next: (response) => {
-        if (this.isAssistantMode) {
-          this.statusCards = [
-            {
-              title: 'À recevoir',
-              count: response.cards.toReceive,
-              description: 'Documents en réception',
-              color: '#1d4ed8',
-              icon: '📄'
-            },
-            {
-              title: 'À traiter',
-              count: response.cards.toProcess,
-              description: 'Nécessitent votre action',
-              color: '#0b3a78',
-              emphasis: true,
-              icon: '📝'
-            },
-            {
-              title: 'En cours',
-              count: response.cards.inProgress,
-              description: 'Documents en traitement',
-              color: '#d97706',
-              icon: '🔄'
-            },
-            {
-              title: 'Terminés',
-              count: response.cards.done,
-              description: 'Documents archivés',
-              color: '#dc2626',
-              icon: '🗂️'
-            }
-          ];
+        try {
+          if (this.isAssistantMode) {
+            this.statusCards = [
+              {
+                title: 'À recevoir',
+                count: response.cards.toReceive,
+                description: 'Documents en réception',
+                color: '#1d4ed8',
+                icon: '📄'
+              },
+              {
+                title: 'À traiter',
+                count: response.cards.toProcess,
+                description: 'Nécessitent votre action',
+                color: '#0b3a78',
+                emphasis: true,
+                icon: '📝'
+              },
+              {
+                title: 'En cours',
+                count: response.cards.inProgress,
+                description: 'Documents en traitement',
+                color: '#d97706',
+                icon: '🔄'
+              },
+              {
+                title: 'Terminés',
+                count: response.cards.done,
+                description: 'Documents archivés',
+                color: '#dc2626',
+                icon: '🗂️'
+              }
+            ];
 
-          this.quickFilters = [
-            { label: 'Tous', count: response.quickFilters.all, active: true },
-            { label: 'À traiter', count: response.quickFilters.toProcess },
-            { label: 'Destinés à moi', count: response.quickFilters.assignedToMe },
-            { label: 'Envoyés par moi', count: response.quickFilters.sentByMe },
-            { label: 'Sans accusé réception', count: response.quickFilters.noAck },
-            { label: 'Urgents', count: response.quickFilters.urgent },
-            { label: 'En retard', count: response.quickFilters.delayed },
-            { label: 'Bloqués', count: response.quickFilters.blocked },
-            { label: 'Traités cette semaine', count: response.quickFilters.treatedThisWeek }
-          ];
-        } else {
-          this.statusCards = [
-            {
-              title: 'À traiter',
-              count: response.quickFilters.toProcess,
-              description: 'Documents non traités',
-              color: '#1d4ed8',
-              icon: '📄'
-            },
-            {
-              title: 'Destinés à moi',
-              count: response.quickFilters.assignedToMe,
-              description: 'En attente de ma décision',
-              color: '#0b3a78',
-              emphasis: true,
-              icon: '👜'
-            },
-            {
-              title: 'En retard',
-              count: response.quickFilters.delayed,
-              description: 'Délai dépassé',
-              color: '#ef4444',
-              icon: '⏰'
-            },
-            {
-              title: 'Bloqués',
-              count: response.quickFilters.blocked,
-              description: 'Nécessitent attention',
-              color: '#f97316',
-              icon: '⚠️'
-            }
-          ];
+            this.quickFilters = [
+              { label: 'Tous', count: response.quickFilters.all, active: true },
+              { label: 'À traiter', count: response.quickFilters.toProcess },
+              { label: 'Destinés à moi', count: response.quickFilters.assignedToMe },
+              { label: 'Envoyés par moi', count: response.quickFilters.sentByMe },
+              { label: 'Sans accusé réception', count: response.quickFilters.noAck },
+              { label: 'Urgents', count: response.quickFilters.urgent },
+              { label: 'En retard', count: response.quickFilters.delayed },
+              { label: 'Bloqués', count: response.quickFilters.blocked },
+              { label: 'Traités cette semaine', count: response.quickFilters.treatedThisWeek }
+            ];
+          } else {
+            this.statusCards = [
+              {
+                title: 'À traiter',
+                count: response.quickFilters.toProcess,
+                description: 'Documents non traités',
+                color: '#1d4ed8',
+                icon: '📄'
+              },
+              {
+                title: 'Destinés à moi',
+                count: response.quickFilters.assignedToMe,
+                description: 'En attente de ma décision',
+                color: '#0b3a78',
+                emphasis: true,
+                icon: '👜'
+              },
+              {
+                title: 'En retard',
+                count: response.quickFilters.delayed,
+                description: 'Délai dépassé',
+                color: '#ef4444',
+                icon: '⏰'
+              },
+              {
+                title: 'Bloqués',
+                count: response.quickFilters.blocked,
+                description: 'Nécessitent attention',
+                color: '#f97316',
+                icon: '⚠️'
+              }
+            ];
 
-          this.quickFilters = [
-            { label: 'Tous', count: response.quickFilters.all, active: true },
-            { label: 'Destinés à moi', count: response.quickFilters.assignedToMe },
-            { label: 'En retard', count: response.quickFilters.delayed }
-          ];
+            this.quickFilters = [
+              { label: 'Tous', count: response.quickFilters.all, active: true },
+              { label: 'Destinés à moi', count: response.quickFilters.assignedToMe },
+              { label: 'En retard', count: response.quickFilters.delayed }
+            ];
+          }
+
+          this.documents = (response.documents || []).map((document) => ({
+            ...document,
+            lastAction: this.formatDate(document.lastActionAt),
+            lastActionNote: document.lastActionNote,
+            priority: document.priority || 'Normale'
+          }));
+          this.setLastUpdated();
+        } catch (error) {
+          console.error('Assistant dashboard processing failed', error);
         }
-
-        this.documents = response.documents.map((document) => ({
-          ...document,
-          lastAction: this.formatDate(document.lastActionAt),
-          lastActionNote: document.lastActionNote,
-          priority: document.priority || 'Normale'
-        }));
-        this.isLoading = false;
-      },
-      error: () => {
-        this.isLoading = false;
       }
     });
   }
@@ -2679,43 +2995,42 @@ export class DashboardComponent implements OnInit {
   }
 
   private loadCoordinatorDashboard(): void {
-    this.isLoading = true;
-    this.http.get<any>(`${API_BASE_URL}/coordinator/dashboard`).subscribe({
+    this.withLoading(this.http.get<any>(`${API_BASE_URL}/coordinator/dashboard`)).subscribe({
       next: (response) => {
-        if (response?.cards) {
-          this.coordinatorCards[0].count = response.cards.pending ?? 0;
-          this.coordinatorCards[1].count = response.cards.rejected ?? 0;
-          this.coordinatorCards[2].count = response.cards.validated ?? 0;
-          this.coordinatorCards[3].count = response.cards.urgent ?? 0;
-        }
+        try {
+          if (response?.cards) {
+            this.coordinatorCards[0].count = response.cards.pending ?? 0;
+            this.coordinatorCards[1].count = response.cards.rejected ?? 0;
+            this.coordinatorCards[2].count = response.cards.validated ?? 0;
+            this.coordinatorCards[3].count = response.cards.urgent ?? 0;
+          }
 
-        if (response?.documents) {
-          this.coordinatorDocuments = response.documents.map((doc: any) => ({
-            id: doc.id,
-            number: doc.number,
-            object: doc.object || doc.subject,
-            type: doc.type || '',
-            owner: doc.owner || doc.sender || '',
-            ownerRole: doc.ownerRole || '',
-            status: doc.status,
-            statusTone: doc.statusTone || 'info',
-            lastAction: this.formatDate(doc.lastActionAt || doc.pilierSentToCoordinatorAt || doc.createdAt || ''),
-            lastActionNote: doc.lastActionNote || '',
-            delay: doc.delay || '',
-            delayTone: doc.delayTone || 'muted',
-            category: doc.category || 'a-valider',
-            deadline: doc.deadline ? this.formatDate(doc.deadline) : undefined,
-            chiefInstruction: doc.chiefInstruction || '',
-            coordinatorComment: doc.coordinatorComment || '',
-            sender: doc.sender || '',
-            priority: doc.priority || doc.chiefPriority || 'Normale'
-          }));
+          if (response?.documents) {
+            this.coordinatorDocuments = response.documents.map((doc: any) => ({
+              id: doc.id,
+              number: doc.number,
+              object: doc.object || doc.subject,
+              type: doc.type || '',
+              owner: doc.owner || doc.sender || '',
+              ownerRole: doc.ownerRole || '',
+              status: doc.status,
+              statusTone: doc.statusTone || 'info',
+              lastAction: this.formatDate(doc.lastActionAt || doc.pilierSentToCoordinatorAt || doc.createdAt || ''),
+              lastActionNote: doc.lastActionNote || '',
+              delay: doc.delay || '',
+              delayTone: doc.delayTone || 'muted',
+              category: doc.category || 'a-valider',
+              deadline: doc.deadline ? this.formatDate(doc.deadline) : undefined,
+              chiefInstruction: doc.chiefInstruction || '',
+              coordinatorComment: doc.coordinatorComment || '',
+              sender: doc.sender || '',
+              priority: doc.priority || doc.chiefPriority || 'Normale'
+            }));
+          }
+          this.setLastUpdated();
+        } catch (error) {
+          console.error('Coordinator dashboard processing failed', error);
         }
-
-        this.isLoading = false;
-      },
-      error: () => {
-        this.isLoading = false;
       }
     });
   }
@@ -2818,43 +3133,42 @@ export class DashboardComponent implements OnInit {
   }
 
   private loadServiceDashboard(): void {
-    this.isLoading = true;
-    this.http.get<any>(`${API_BASE_URL}/service/dashboard`).subscribe({
+    this.withLoading(this.http.get<any>(`${API_BASE_URL}/service/dashboard`)).subscribe({
       next: (response) => {
-        if (response?.cards) {
-          this.serviceCards[0].count = response.cards.toReceive ?? 0;
-          this.serviceCards[1].count = response.cards.inProgress ?? 0;
-          this.serviceCards[2].count = response.cards.atCoordinator ?? 0;
-          this.serviceCards[3].count = response.cards.late ?? 0;
+        try {
+          if (response?.cards) {
+            this.serviceCards[0].count = response.cards.toReceive ?? 0;
+            this.serviceCards[1].count = response.cards.inProgress ?? 0;
+            this.serviceCards[2].count = response.cards.atCoordinator ?? 0;
+            this.serviceCards[3].count = response.cards.late ?? 0;
+          }
+
+          this.serviceDisplayName = response?.serviceName || this.serviceDisplayName;
+
+          if (response?.documents) {
+            this.serviceDocuments = response.documents.map((doc: any) => ({
+              id: doc.id,
+              number: doc.number,
+              object: doc.object || doc.subject,
+              type: doc.type || '',
+              owner: doc.owner || doc.sender || '',
+              ownerRole: doc.ownerRole || '',
+              status: doc.status,
+              statusTone: doc.statusTone || 'info',
+              lastAction: this.formatDate(doc.lastActionAt || doc.createdAt || ''),
+              lastActionNote: doc.lastActionNote || '',
+              delay: doc.delay || '',
+              delayTone: doc.delayTone || 'muted',
+              category: doc.category || 'a-receptionner',
+              deadline: doc.deadline ? this.formatDate(doc.deadline) : undefined,
+              chiefInstruction: doc.chiefInstruction || '',
+              priority: doc.priority || doc.chiefPriority || 'Normale'
+            }));
+          }
+          this.setLastUpdated();
+        } catch (error) {
+          console.error('Service dashboard processing failed', error);
         }
-
-        this.serviceDisplayName = response.serviceName || this.serviceDisplayName;
-
-        if (response?.documents) {
-          this.serviceDocuments = response.documents.map((doc: any) => ({
-            id: doc.id,
-            number: doc.number,
-            object: doc.object || doc.subject,
-            type: doc.type || '',
-            owner: doc.owner || doc.sender || '',
-            ownerRole: doc.ownerRole || '',
-            status: doc.status,
-            statusTone: doc.statusTone || 'info',
-            lastAction: this.formatDate(doc.lastActionAt || doc.createdAt || ''),
-            lastActionNote: doc.lastActionNote || '',
-            delay: doc.delay || '',
-            delayTone: doc.delayTone || 'muted',
-            category: doc.category || 'a-receptionner',
-            deadline: doc.deadline ? this.formatDate(doc.deadline) : undefined,
-            chiefInstruction: doc.chiefInstruction || '',
-            priority: doc.priority || doc.chiefPriority || 'Normale'
-          }));
-        }
-
-        this.isLoading = false;
-      },
-      error: () => {
-        this.isLoading = false;
       }
     });
   }
@@ -2888,56 +3202,55 @@ export class DashboardComponent implements OnInit {
   }
 
   private loadSecretariatDashboard(): void {
-    this.isLoading = true;
-    this.http.get<any>(`${API_BASE_URL}/secretariat/dashboard`).subscribe({
+    this.withLoading(this.http.get<any>(`${API_BASE_URL}/secretariat/dashboard`)).subscribe({
       next: (response) => {
-        if (response?.cards) {
-          this.secretariatCards[0].count = response.cards.toFormat ?? 0;
-          this.secretariatCards[1].count = response.cards.formattedToday ?? 0;
-          this.secretariatCards[2].count = response.cards.sentToAssistant ?? 0;
-          this.secretariatCards[3].count = response.cards.returnedForCorrection ?? 0;
-        }
+        try {
+          if (response?.cards) {
+            this.secretariatCards[0].count = response.cards.toFormat ?? 0;
+            this.secretariatCards[1].count = response.cards.formattedToday ?? 0;
+            this.secretariatCards[2].count = response.cards.sentToAssistant ?? 0;
+            this.secretariatCards[3].count = response.cards.returnedForCorrection ?? 0;
+          }
 
-        if (response?.documents) {
-          this.secretariatDocuments = response.documents.map((doc: any) => ({
-            id: doc.id,
-            number: doc.number,
-            object: doc.object || doc.subject,
-            type: doc.type || '',
-            owner: doc.owner || doc.sender || '',
-            ownerRole: doc.ownerRole || '',
-            status: doc.status,
-            statusTone: doc.statusTone || 'info',
-            lastAction: this.formatDate(doc.lastActionAt || doc.receivedDate || ''),
-            lastActionNote: doc.lastActionNote || '',
-            delay: doc.delay || '',
-            delayTone: doc.delayTone || 'muted',
-            priority: doc.priority || 'Normale'
-          }));
-        }
+          if (response?.documents) {
+            this.secretariatDocuments = response.documents.map((doc: any) => ({
+              id: doc.id,
+              number: doc.number,
+              object: doc.object || doc.subject,
+              type: doc.type || '',
+              owner: doc.owner || doc.sender || '',
+              ownerRole: doc.ownerRole || '',
+              status: doc.status,
+              statusTone: doc.statusTone || 'info',
+              lastAction: this.formatDate(doc.lastActionAt || doc.receivedDate || ''),
+              lastActionNote: doc.lastActionNote || '',
+              delay: doc.delay || '',
+              delayTone: doc.delayTone || 'muted',
+              priority: doc.priority || 'Normale'
+            }));
+          }
 
-        if (response?.formattedDocuments) {
-          this.secretariatFormattedDocuments = response.formattedDocuments.map((doc: any) => ({
-            id: doc.id,
-            number: doc.number,
-            object: doc.object || doc.subject,
-            type: doc.type || '',
-            owner: doc.owner || doc.sender || '',
-            ownerRole: doc.ownerRole || '',
-            status: doc.status,
-            statusTone: 'success',
-            lastAction: this.formatDate(doc.lastActionAt || doc.receivedDate || ''),
-            lastActionNote: '',
-            delay: '',
-            delayTone: 'muted',
-            priority: doc.priority || 'Normale'
-          }));
+          if (response?.formattedDocuments) {
+            this.secretariatFormattedDocuments = response.formattedDocuments.map((doc: any) => ({
+              id: doc.id,
+              number: doc.number,
+              object: doc.object || doc.subject,
+              type: doc.type || '',
+              owner: doc.owner || doc.sender || '',
+              ownerRole: doc.ownerRole || '',
+              status: doc.status,
+              statusTone: 'success',
+              lastAction: this.formatDate(doc.lastActionAt || doc.receivedDate || ''),
+              lastActionNote: '',
+              delay: '',
+              delayTone: 'muted',
+              priority: doc.priority || 'Normale'
+            }));
+          }
+          this.setLastUpdated();
+        } catch (error) {
+          console.error('Secretariat dashboard processing failed', error);
         }
-
-        this.isLoading = false;
-      },
-      error: () => {
-        this.isLoading = false;
       }
     });
   }
@@ -2953,20 +3266,54 @@ export class DashboardComponent implements OnInit {
   // ── AUDITEUR DASHBOARD ──
 
   private loadAuditeurDashboard(): void {
-    this.isLoading = true;
-    this.http.get<{
+    this.withLoading(this.http.get<{
       cards: { total: number; late: number; onTime: number; completed: number; urgent: number; withDecision: number };
       documents: Array<{ id: number; number: string; subject: string; sender: string; owner: string; status: string; chiefDecision: string; priority: string; pilierStatus: string; coordinatorStatus: string; deadline: string | null; isLate: boolean; createdAt: string }>;
-    }>(`${API_BASE_URL}/auditeur/dashboard`).subscribe({
+    }>(`${API_BASE_URL}/auditeur/dashboard`)).subscribe({
       next: (data) => {
-        this.auditeurCards = data.cards;
-        this.auditeurDocuments = data.documents;
-        this.isLoading = false;
-      },
-      error: () => {
-        this.isLoading = false;
+        try {
+          this.auditeurCards = data.cards;
+          this.auditeurDocuments = data.documents;
+          this.setLastUpdated();
+        } catch (error) {
+          console.error('Auditeur dashboard processing failed', error);
+        }
       }
     });
+  }
+
+  get lastUpdatedLabel(): string {
+    if (!this.lastUpdatedAt) {
+      return '—';
+    }
+    return this.formatDateTime(this.lastUpdatedAt);
+  }
+
+  private setLastUpdated(): void {
+    this.lastUpdatedAt = new Date();
+  }
+
+  private withLoading<T>(request: Observable<T>): Observable<T> {
+    this.isLoading = true;
+    return request.pipe(
+      timeout(this.loadingTimeoutMs),
+      finalize(() => this.stopLoading())
+    );
+  }
+
+  private stopLoading(): void {
+    this.isLoading = false;
+    this.cdr.markForCheck();
+  }
+
+  private formatDateTime(value: Date): string {
+    return new Intl.DateTimeFormat('fr-FR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(value);
   }
 
   getPriorityTone(priority: string | undefined): string {
