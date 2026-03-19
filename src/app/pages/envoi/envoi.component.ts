@@ -2,6 +2,7 @@ import { Component, ChangeDetectionStrategy, signal, inject } from '@angular/cor
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { API_BASE_URL } from '../../auth/auth.service';
+import { ToastService } from '../../shared/toast/toast.service';
 
 @Component({
   selector: 'app-envoi',
@@ -590,6 +591,7 @@ import { API_BASE_URL } from '../../auth/auth.service';
 })
 export class EnvoiComponent {
   private readonly http = inject(HttpClient);
+  private readonly toast = inject(ToastService);
 
   activeTab = signal<'new' | 'route'>('new');
   isSubmitting = signal(false);
@@ -686,9 +688,11 @@ export class EnvoiComponent {
       next: () => {
         this.isSubmitting.set(false);
         this.resetNewDocument();
+        this.toast.success('Document envoye avec succes.');
       },
       error: () => {
         this.isSubmitting.set(false);
+        this.toast.error("Impossible d'envoyer le document.");
       }
     });
   }
@@ -711,9 +715,11 @@ export class EnvoiComponent {
       next: () => {
         this.isSubmitting.set(false);
         this.resetRouteDocument();
+        this.toast.success('Document route avec succes.');
       },
       error: () => {
         this.isSubmitting.set(false);
+        this.toast.error('Impossible de router le document.');
       }
     });
   }

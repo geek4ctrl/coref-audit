@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { API_BASE_URL } from '../../auth/auth.service';
+import { ToastService } from '../../shared/toast/toast.service';
 
 type DocumentForm = {
   documentNumber: string;
@@ -585,6 +586,7 @@ type DocumentForm = {
 export class NouveauDocumentComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly http = inject(HttpClient);
+  private readonly toast = inject(ToastService);
 
   currentStep = 1;
   private readonly autosaveKey = 'coref-nouveau-document-draft';
@@ -726,10 +728,12 @@ export class NouveauDocumentComponent implements OnInit {
       next: () => {
         this.isSubmitting = false;
         this.clearDraft();
+        this.toast.success('Document enregistre.');
         this.router.navigate(['/documents']);
       },
       error: () => {
         this.isSubmitting = false;
+        this.toast.error("Impossible d'enregistrer le document.");
       }
     });
   }

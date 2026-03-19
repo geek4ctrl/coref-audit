@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
-import { ToastService } from './toast.service';
+import { ToastItem, ToastService } from './toast.service';
 
 @Component({
   selector: 'app-toast',
@@ -14,6 +14,7 @@ import { ToastService } from './toast.service';
           [class.error]="toast.type === 'error'"
           [class.info]="toast.type === 'info'"
           (click)="dismiss(toast.id)"
+          (keydown.enter)="handleKeydown(toast)"
           role="button"
           tabindex="0"
         >
@@ -144,8 +145,15 @@ export class ToastComponent {
     this.toastService.dismiss(id);
   }
 
-  handleAction(toast: { id: string; onAction?: () => void }, event: Event): void {
+  handleAction(toast: ToastItem, event: Event): void {
     event.stopPropagation();
+    if (toast.onAction) {
+      toast.onAction();
+    }
+    this.toastService.dismiss(toast.id);
+  }
+
+  handleKeydown(toast: ToastItem): void {
     if (toast.onAction) {
       toast.onAction();
     }

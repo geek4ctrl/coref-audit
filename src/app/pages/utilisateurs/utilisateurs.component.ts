@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { API_BASE_URL } from '../../auth/auth.service';
+import { ToastService } from '../../shared/toast/toast.service';
 
 interface ApiUser {
   id: number;
@@ -507,6 +508,7 @@ const ROLE_MAP: Record<string, { label: string; tone: string }> = {
 })
 export class UtilisateursComponent implements OnInit {
   private readonly http = inject(HttpClient);
+  private readonly toast = inject(ToastService);
 
   users: UserRow[] = [];
   isLoading = true;
@@ -580,10 +582,12 @@ export class UtilisateursComponent implements OnInit {
         this.showCreateForm = false;
         this.newUser = { name: '', email: '', password: '', role: '' };
         this.isCreating = false;
+        this.toast.success('Utilisateur cree.');
       },
       error: (err) => {
         this.createError = err.error?.error || 'Erreur lors de la création.';
         this.isCreating = false;
+        this.toast.error('Impossible de creer l\'utilisateur.');
       }
     });
   }
@@ -598,8 +602,12 @@ export class UtilisateursComponent implements OnInit {
         const idx = this.users.findIndex(u => u.id === user.id);
         if (idx >= 0) this.users[idx] = this.mapUser(data.user);
         this.pendingIds.delete(user.id);
+        this.toast.success(user.isActive ? 'Utilisateur desactive.' : 'Utilisateur active.');
       },
-      error: () => { this.pendingIds.delete(user.id); }
+      error: () => {
+        this.pendingIds.delete(user.id);
+        this.toast.error("Impossible de modifier l'utilisateur.");
+      }
     });
   }
 }
