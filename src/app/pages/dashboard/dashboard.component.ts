@@ -2675,16 +2675,19 @@ export class DashboardComponent implements OnInit {
         this.http.patch(`${API_BASE_URL}/pilier/documents/${documentId}/send-to-coordinator`, {}).subscribe({
           next: () => {
             this.pendingDocumentIds.delete(documentId);
+            this.toast.success('Document renvoye au coordinateur.');
             this.loadPilierDashboard();
           },
           error: () => {
             this.pendingDocumentIds.delete(documentId);
+            this.toast.error("Impossible d'envoyer au coordinateur.");
             this.loadPilierDashboard();
           }
         });
       },
       error: () => {
         this.pendingDocumentIds.delete(documentId);
+        this.toast.error('Impossible de finaliser le document.');
       }
     });
   }
@@ -2702,10 +2705,18 @@ export class DashboardComponent implements OnInit {
     this.http.patch(`${API_BASE_URL}/pilier/documents/${documentId}/${action}`, body).subscribe({
       next: () => {
         this.pendingDocumentIds.delete(documentId);
+        const actionLabels: Record<string, string> = {
+          'finalize': 'Document finalise.',
+          'send-to-coordinator': 'Envoye au coordinateur.',
+          'send-to-chief': 'Envoye au chef.',
+          'ack': 'Reception confirmee.'
+        };
+        this.toast.success(actionLabels[action] || 'Action terminee.');
         this.loadPilierDashboard();
       },
       error: () => {
         this.pendingDocumentIds.delete(documentId);
+        this.toast.error('Action impossible.');
       }
     });
   }
@@ -3082,10 +3093,12 @@ export class DashboardComponent implements OnInit {
     }).subscribe({
       next: () => {
         this.pendingDocumentIds.delete(documentId);
+        this.toast.success('Document valide.');
         this.loadCoordinatorDashboard();
       },
       error: () => {
         this.pendingDocumentIds.delete(documentId);
+        this.toast.error('Validation impossible.');
       }
     });
   }
@@ -3115,10 +3128,12 @@ export class DashboardComponent implements OnInit {
     }).subscribe({
       next: () => {
         this.pendingDocumentIds.delete(documentId);
+        this.toast.success('Document rejete.');
         this.loadCoordinatorDashboard();
       },
       error: () => {
         this.pendingDocumentIds.delete(documentId);
+        this.toast.error('Rejet impossible.');
       }
     });
   }
@@ -3131,10 +3146,12 @@ export class DashboardComponent implements OnInit {
     this.http.patch(`${API_BASE_URL}/secretariat/documents/${documentId}/format`, {}).subscribe({
       next: () => {
         this.pendingDocumentIds.delete(documentId);
+        this.toast.success('Document formate.');
         this.loadSecretariatDashboard();
       },
       error: () => {
         this.pendingDocumentIds.delete(documentId);
+        this.toast.error('Formatage impossible.');
       }
     });
   }
@@ -3145,10 +3162,12 @@ export class DashboardComponent implements OnInit {
     this.http.patch(`${API_BASE_URL}/secretariat/documents/${documentId}/send-to-assistant`, {}).subscribe({
       next: () => {
         this.pendingDocumentIds.delete(documentId);
+        this.toast.success("Envoye a l'assistante.");
         this.loadSecretariatDashboard();
       },
       error: () => {
         this.pendingDocumentIds.delete(documentId);
+        this.toast.error("Envoi a l'assistante impossible.");
       }
     });
   }
@@ -3216,10 +3235,18 @@ export class DashboardComponent implements OnInit {
     this.http.patch(`${API_BASE_URL}/service/documents/${documentId}/${action}`, {}).subscribe({
       next: () => {
         this.pendingDocumentIds.delete(documentId);
+        const actionLabels: Record<string, string> = {
+          'ack': 'Reception confirmee.',
+          'send-to-coordinator': 'Envoye au coordinateur.',
+          'send-to-assistant': "Envoye a l'assistante.",
+          'close': 'Document cloture.'
+        };
+        this.toast.success(actionLabels[action] || 'Action terminee.');
         this.loadServiceDashboard();
       },
       error: () => {
         this.pendingDocumentIds.delete(documentId);
+        this.toast.error('Action impossible.');
       }
     });
   }
