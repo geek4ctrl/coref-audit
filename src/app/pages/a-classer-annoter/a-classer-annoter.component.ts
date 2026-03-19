@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { API_BASE_URL } from '../../auth/auth.service';
 import { ToastService } from '../../shared/toast/toast.service';
@@ -17,6 +17,11 @@ interface AssistantDashboardDocument {
 
 interface AssistantDashboardResponse {
   documents: AssistantDashboardDocument[];
+  cards?: {
+    toProcess?: number;
+    inProgress?: number;
+    done?: number;
+  };
 }
 
 @Component({
@@ -92,6 +97,27 @@ interface AssistantDashboardResponse {
 
         @if (!rows.length && !isLoading) {
           <div class="empty">Aucun document à traiter.</div>
+        }
+      </div>
+
+      <div class="recent-card">
+        <div class="recent-header">
+          <div class="recent-title">Derniers documents reçus</div>
+          <button type="button" class="recent-link" (click)="goToSearch()">Voir tout →</button>
+        </div>
+        @if (recentDocuments.length) {
+          @for (doc of recentDocuments; track doc.id) {
+            <div class="recent-row">
+              <div>
+                <div class="recent-number">{{ doc.number }}</div>
+                <div class="recent-subject">{{ doc.object }}</div>
+                <div class="recent-meta">Reçu: {{ doc.receivedAtLabel }}</div>
+              </div>
+              <span class="pill neutral">{{ doc.priorityLabel }}</span>
+            </div>
+          }
+        } @else {
+          <div class="empty">Aucun document reçu.</div>
         }
       </div>
     </div>
@@ -256,6 +282,64 @@ interface AssistantDashboardResponse {
 
     .empty { padding: 18px 20px; color: #64748b; font-size: 11px; border-top: 1px solid #e2e8f0; }
 
+    .recent-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+    }
+
+    .recent-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid #e2e8f0;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    }
+
+    .recent-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #0b2f5c;
+    }
+
+    .recent-link {
+      border: 1px solid #dbe3ef;
+      background: #fff;
+      color: #1d4ed8;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+    }
+
+    .recent-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .recent-row:last-child { border-bottom: none; }
+
+    .recent-number {
+      color: #0b2f5c;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .recent-subject {
+      color: #0f172a;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .recent-meta {
+      color: #64748b;
+    }
+
     @media (max-width: 1024px) {
       .kpi-grid { grid-template-columns: 1fr; }
       .table-title { font-size: 12px; }
@@ -269,6 +353,7 @@ export class AClasserAnnoterComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   rows: Array<{
     id: number;
@@ -279,6 +364,13 @@ export class AClasserAnnoterComponent implements OnInit {
     receivedAtLabel: string;
     stateLabel: string;
     stateTone: 'new' | 'open' | 'ready' | 'done';
+  }> = [];
+  recentDocuments: Array<{
+    id: number;
+    number: string;
+    object: string;
+    receivedAtLabel: string;
+    priorityLabel: string;
   }> = [];
 
   newCount = 0;
@@ -363,29 +455,45 @@ export class AClasserAnnoterComponent implements OnInit {
     this.isLoading = true;
     this.http.get<AssistantDashboardResponse>(`${API_BASE_URL}/assistant/dashboard`).subscribe({
       next: (response) => {
-        const documents = response.documents || [];
+        const documents = Array.isArray(response.documents) ? response.documents : [];
 
-        this.newCount = documents.filter((item) => item.status === 'À traiter').length;
-        this.openCount = documents.filter((item) => item.status === 'En cours').length;
-        this.readyCount = documents.filter((item) => item.status === 'Envoyé au Chef').length;
+        const cards = response.cards;
+        if (cards) {
+          this.newCount = cards.toProcess ?? 0;
+          this.openCount = cards.inProgress ?? 0;
+          this.readyCount = documents.filter((item) => this.normalizeStatus(item.status) === 'envoye au chef').length;
+        } else {
+          this.newCount = documents.filter((item) => this.normalizeStatus(item.status) === 'a traiter').length;
+          this.openCount = documents.filter((item) => this.normalizeStatus(item.status) === 'en cours').length;
+          this.readyCount = documents.filter((item) => this.normalizeStatus(item.status) === 'envoye au chef').length;
+        }
 
-        this.rows = documents
-          .filter((item) => item.status !== 'Terminé')
-          .map((item) => ({
-            id: item.id,
-            number: item.number,
-            object: item.object,
-            type: this.mapType(item.type),
-            priorityLabel: this.mapPriority(item.priority),
-            receivedAtLabel: this.formatDateTime(item.lastActionAt),
-            stateLabel: this.mapState(item.status).label,
-            stateTone: this.mapState(item.status).tone
-          }));
+        const allRows = documents.map((item) => ({
+          id: item.id,
+          number: item.number,
+          object: item.object,
+          type: this.mapType(item.type),
+          priorityLabel: this.mapPriority(item.priority),
+          receivedAtLabel: this.formatDateTime(item.lastActionAt),
+          stateLabel: this.mapState(item.status).label,
+          stateTone: this.mapState(item.status).tone
+        }));
+
+        this.rows = allRows;
+        this.recentDocuments = allRows.slice(0, 5).map((row) => ({
+          id: row.id,
+          number: row.number,
+          object: row.object,
+          receivedAtLabel: row.receivedAtLabel,
+          priorityLabel: row.priorityLabel
+        }));
+        this.cdr.detectChanges();
 
         this.isLoading = false;
       },
       error: () => {
         this.rows = [];
+        this.recentDocuments = [];
         this.newCount = 0;
         this.openCount = 0;
         this.readyCount = 0;
@@ -395,7 +503,14 @@ export class AClasserAnnoterComponent implements OnInit {
     });
   }
 
+  goToSearch(): void {
+    this.router.navigate(['/recherche']);
+  }
+
   private mapType(type: string): string {
+    if (!type) {
+      return '—';
+    }
     if (type.toLowerCase().includes('courrier')) {
       return "Courrier d'arrivée";
     }
@@ -415,16 +530,25 @@ export class AClasserAnnoterComponent implements OnInit {
   }
 
   private mapState(status: string): { label: string; tone: 'new' | 'open' | 'ready' | 'done' } {
-    if (status === 'À traiter') {
+    const normalized = this.normalizeStatus(status);
+    if (normalized === 'a traiter') {
       return { label: 'Nouveau', tone: 'new' };
     }
-    if (status === 'En cours') {
+    if (normalized === 'en cours') {
       return { label: 'Ouvert', tone: 'open' };
     }
-    if (status === 'Envoyé au Chef') {
+    if (normalized === 'envoye au chef') {
       return { label: 'Prêt', tone: 'ready' };
     }
     return { label: 'Traité', tone: 'done' };
+  }
+
+  private normalizeStatus(status?: string): string {
+    return (status || '')
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .toLowerCase()
+      .trim();
   }
 
   private formatDateTime(value: string): string {
