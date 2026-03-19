@@ -2995,21 +2995,22 @@ export class DashboardComponent implements OnInit {
         this.pendingDocumentIds.delete(documentId);
         this.loadAssistantDashboard();
 
-        if (payload.decision === 'ASSIGN_PILIER') {
-          window.alert(
-            [
-              'CHEF / SG',
-              '',
-              'Action: Assignation au CHEF DE PILIER',
-              '- Définit priorité et délai',
-              '- Ajoute instructions détaillées',
-              '- Notification envoyée'
-            ].join('\n')
-          );
-        }
+        const decisionLabels: Record<typeof payload.decision, string> = {
+          ASSIGN_PILIER: 'Assigné au chef de pilier.',
+          ASSIGN_SERVICE: 'Assigné au service.',
+          SEND_SECRETARIAT: 'Envoyé au secrétariat.',
+          CLOSE: 'Document clôturé.',
+          BLOQUER: 'Document bloqué.'
+        };
+
+        this.toast.success(decisionLabels[payload.decision] || 'Décision appliquée.', 3000, {
+          label: 'Voir',
+          onAction: () => this.router.navigate(['/documents'])
+        });
       },
       error: () => {
         this.pendingDocumentIds.delete(documentId);
+        this.toast.error('Impossible d\'enregistrer la décision.');
       }
     });
   }

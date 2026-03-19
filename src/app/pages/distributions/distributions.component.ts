@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { API_BASE_URL } from '../../auth/auth.service';
 import { ToastService } from '../../shared/toast/toast.service';
 
@@ -273,6 +273,7 @@ interface DistributionOverviewResponse {
 export class DistributionsComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
 
   activeTab = signal<'todo' | 'done'>('todo');
@@ -297,7 +298,10 @@ export class DistributionsComponent implements OnInit {
     this.errorMessage.set('');
     this.http.post(`${API_BASE_URL}/reception/distributions/${documentId}/mark-delivered`, {}).subscribe({
       next: () => {
-        this.toast.success('Courrier marqué comme remis.');
+        this.toast.success('Courrier marqué comme remis.', 2500, {
+          label: 'Voir',
+          onAction: () => this.router.navigate(['/distributions'], { queryParams: { tab: 'done' } })
+        });
         this.loadOverview();
       },
       error: () => {
@@ -311,7 +315,10 @@ export class DistributionsComponent implements OnInit {
     this.errorMessage.set('');
     this.http.post(`${API_BASE_URL}/reception/distributions/${documentId}/generate-bordereau`, {}).subscribe({
       next: () => {
-        this.toast.success('Bordereau généré.');
+        this.toast.success('Bordereau généré.', 2500, {
+          label: 'Voir',
+          onAction: () => this.router.navigate(['/bordereaux'])
+        });
         this.loadOverview();
       },
       error: () => {
