@@ -1,5 +1,6 @@
 import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { StatusCardComponent, StatusCard } from '../../shared/status-card/status-card.component';
@@ -63,7 +64,7 @@ interface DashboardDocument {
 }
 
 @Component({
-  imports: [CommonModule, StatusCardComponent],
+  imports: [CommonModule, FormsModule, StatusCardComponent],
   template: `
     <div class="dashboard">
       @if (isPilierMode) {
@@ -1021,6 +1022,70 @@ interface DashboardDocument {
             </table>
           </div>
         </div>
+
+        @if (showDecisionModal) {
+          <div class="modal-backdrop" (click)="closeDecisionModal()"></div>
+          <div class="modal" role="dialog" aria-modal="true">
+            <div class="modal-header">
+              <div>
+                <h3>Decision Chef / SG</h3>
+                <p>Choisissez une action pour ce document.</p>
+              </div>
+              <button type="button" class="modal-close" (click)="closeDecisionModal()">✕</button>
+            </div>
+
+            <div class="modal-body">
+              <div class="modal-group">
+                <label>Decision</label>
+                <select [(ngModel)]="decisionChoice">
+                  <option value="A">Assignation au Chef de Pilier</option>
+                  <option value="B">Assignation a un Service</option>
+                  <option value="C">Envoyer au Secretariat</option>
+                  <option value="D">Cloturer</option>
+                  <option value="E">Bloquer</option>
+                </select>
+              </div>
+
+              @if (decisionChoice === 'A' || decisionChoice === 'B') {
+                <div class="modal-grid">
+                  <div class="modal-group">
+                    <label>{{ decisionChoice === 'A' ? 'Chef de Pilier' : 'Service' }}</label>
+                    <input type="text" [(ngModel)]="assignedToValue" placeholder="Nom ou code" />
+                  </div>
+                  <div class="modal-group">
+                    <label>Priorite</label>
+                    <select [(ngModel)]="priorityValue">
+                      <option value="Normale">Normale</option>
+                      <option value="Basse">Basse</option>
+                      <option value="Haute">Haute</option>
+                      <option value="Urgente">Urgente</option>
+                    </select>
+                  </div>
+                  <div class="modal-group">
+                    <label>Delai (SLA) en jours</label>
+                    <input type="number" min="1" [(ngModel)]="slaDaysValue" />
+                  </div>
+                </div>
+                <div class="modal-group">
+                  <label>Instructions (optionnel)</label>
+                  <textarea rows="3" [(ngModel)]="instructionValue"></textarea>
+                </div>
+              }
+
+              @if (decisionChoice === 'E') {
+                <div class="modal-group">
+                  <label>Informations complementaires (optionnel)</label>
+                  <textarea rows="3" [(ngModel)]="instructionValue"></textarea>
+                </div>
+              }
+            </div>
+
+            <div class="modal-footer">
+              <button type="button" class="btn-secondary" (click)="closeDecisionModal()">Annuler</button>
+              <button type="button" class="btn-primary" (click)="submitDecisionModal()">Confirmer</button>
+            </div>
+          </div>
+        }
       }
     </div>
   `,
@@ -1243,6 +1308,112 @@ interface DashboardDocument {
       color: #64748b;
       margin-top: 2px;
       font-size: 11px;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.35);
+      z-index: 1200;
+    }
+
+    .modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: min(680px, calc(100% - 32px));
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+      z-index: 1300;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding: 20px 24px 0;
+    }
+
+    .modal-header h3 {
+      margin: 0 0 4px;
+      font-size: 16px;
+      color: #0f172a;
+    }
+
+    .modal-header p {
+      margin: 0;
+      color: #64748b;
+      font-size: 12px;
+    }
+
+    .modal-close {
+      border: none;
+      background: #f1f5f9;
+      color: #0f172a;
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+
+    .modal-body {
+      padding: 16px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .modal-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .modal-group label {
+      font-size: 11px;
+      color: #475569;
+    }
+
+    .modal-group input,
+    .modal-group select,
+    .modal-group textarea {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 12px;
+    }
+
+    .modal-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .modal-footer {
+      padding: 0 24px 20px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .btn-secondary,
+    .btn-primary {
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-size: 12px;
+      cursor: pointer;
+      border: 1px solid #e2e8f0;
+      background: #fff;
+    }
+
+    .btn-primary {
+      background: #0b3a78;
+      border-color: #0b3a78;
+      color: #fff;
     }
 
     .assistant-list-panel {
@@ -2192,6 +2363,14 @@ export class DashboardComponent implements OnInit {
   readonly skeletonCards = Array.from({ length: 4 }, (_, index) => index);
   readonly skeletonRows = Array.from({ length: 6 }, (_, index) => index);
 
+  showDecisionModal = false;
+  decisionDocumentId: number | null = null;
+  decisionChoice: 'A' | 'B' | 'C' | 'D' | 'E' = 'A';
+  assignedToValue = '';
+  priorityValue: 'Normale' | 'Basse' | 'Haute' | 'Urgente' = 'Normale';
+  slaDaysValue = 7;
+  instructionValue = '';
+
   // Pilier mode properties
   pilierServiceName = '';
   pilierActiveTab = 'a-receptionner';
@@ -2928,65 +3107,60 @@ export class DashboardComponent implements OnInit {
   }
 
   private openChiefDecisionFlow(documentId: number): void {
-    const decisionRaw = window.prompt(
-      [
-        'CHEF / SG — Décision:',
-        'A = Assignation au CHEF DE PILIER',
-        'B = Assignation à un SERVICE',
-        'C = Envoyer au SECRÉTARIAT',
-        'D = Clôturer directement',
-        'E = Bloquer (infos complémentaires)'
-      ].join('\n'),
-      'A'
-    );
+    this.decisionDocumentId = documentId;
+    this.decisionChoice = 'A';
+    this.assignedToValue = '';
+    this.priorityValue = 'Normale';
+    this.slaDaysValue = 7;
+    this.instructionValue = '';
+    this.showDecisionModal = true;
+  }
 
-    if (!decisionRaw) {
+  closeDecisionModal(): void {
+    this.showDecisionModal = false;
+    this.decisionDocumentId = null;
+  }
+
+  submitDecisionModal(): void {
+    if (!this.decisionDocumentId) {
       return;
     }
 
-    const choice = decisionRaw.trim().toUpperCase();
-    if (!['A', 'B', 'C', 'D', 'E'].includes(choice)) {
-      return;
-    }
+    const choice = this.decisionChoice;
+    const documentId = this.decisionDocumentId;
 
     if (choice === 'C') {
+      this.closeDecisionModal();
       this.submitChiefDecision(documentId, { decision: 'SEND_SECRETARIAT' });
       return;
     }
 
     if (choice === 'D') {
+      this.closeDecisionModal();
       this.submitChiefDecision(documentId, { decision: 'CLOSE' });
       return;
     }
 
     if (choice === 'E') {
-      const instruction = window.prompt('Informations complémentaires requises (optionnel):', '') || '';
-      this.submitChiefDecision(documentId, { decision: 'BLOQUER', instruction });
+      this.closeDecisionModal();
+      this.submitChiefDecision(documentId, { decision: 'BLOQUER', instruction: this.instructionValue || undefined });
+      return;
+    }
+
+    if (!this.assignedToValue.trim()) {
+      this.toast.error('Veuillez saisir un responsable.');
       return;
     }
 
     const decision = choice === 'A' ? 'ASSIGN_PILIER' : 'ASSIGN_SERVICE';
-    const assignedToValue = window.prompt(
-      choice === 'A' ? 'Sélectionner Chef de Pilier (nom ou code):' : 'Sélectionner Service (nom ou code):',
-      ''
-    );
-
-    if (!assignedToValue || !assignedToValue.trim()) {
-      return;
-    }
-
-    const priority = (window.prompt('Définir priorité (Basse, Normale, Haute, Urgente):', 'Normale') || '').trim();
-    const defaultSla = priority === 'Urgente' ? '1' : priority === 'Haute' ? '2' : '7';
-    const slaInput = (window.prompt(`Fixer délai (SLA) en jours:`, defaultSla) || '').trim();
-    const instruction = (window.prompt('Ajouter instructions (optionnel):', '') || '').trim();
-
-    const slaDays = Number.parseInt(slaInput, 10);
+    const slaDays = Number.isFinite(this.slaDaysValue) ? this.slaDaysValue : undefined;
+    this.closeDecisionModal();
     this.submitChiefDecision(documentId, {
       decision,
-      assignedToValue: assignedToValue.trim(),
-      priority: priority || undefined,
-      slaDays: Number.isFinite(slaDays) ? slaDays : undefined,
-      instruction: instruction || undefined
+      assignedToValue: this.assignedToValue.trim(),
+      priority: this.priorityValue || undefined,
+      slaDays,
+      instruction: this.instructionValue || undefined
     });
   }
 
