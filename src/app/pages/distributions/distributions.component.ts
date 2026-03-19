@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute } from '@angular/router';
 import { API_BASE_URL } from '../../auth/auth.service';
+import { ToastService } from '../../shared/toast/toast.service';
 
 interface DistributionDocument {
   id: number;
@@ -272,6 +273,7 @@ interface DistributionOverviewResponse {
 export class DistributionsComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly route = inject(ActivatedRoute);
+  private readonly toast = inject(ToastService);
 
   activeTab = signal<'todo' | 'done'>('todo');
   isLoading = signal(false);
@@ -294,16 +296,28 @@ export class DistributionsComponent implements OnInit {
   markDelivered(documentId: number) {
     this.errorMessage.set('');
     this.http.post(`${API_BASE_URL}/reception/distributions/${documentId}/mark-delivered`, {}).subscribe({
-      next: () => this.loadOverview(),
-      error: () => this.errorMessage.set('Impossible de marquer ce courrier comme remis.')
+      next: () => {
+        this.toast.success('Courrier marqué comme remis.');
+        this.loadOverview();
+      },
+      error: () => {
+        this.toast.error('Impossible de marquer ce courrier comme remis.');
+        this.errorMessage.set('Impossible de marquer ce courrier comme remis.');
+      }
     });
   }
 
   generateBordereau(documentId: number) {
     this.errorMessage.set('');
     this.http.post(`${API_BASE_URL}/reception/distributions/${documentId}/generate-bordereau`, {}).subscribe({
-      next: () => this.loadOverview(),
-      error: () => this.errorMessage.set('Impossible de générer le bordereau.')
+      next: () => {
+        this.toast.success('Bordereau généré.');
+        this.loadOverview();
+      },
+      error: () => {
+        this.toast.error('Impossible de générer le bordereau.');
+        this.errorMessage.set('Impossible de générer le bordereau.');
+      }
     });
   }
 

@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { API_BASE_URL } from '../../auth/auth.service';
+import { ToastService } from '../../shared/toast/toast.service';
 
 interface AssistantDashboardDocument {
   id: number;
@@ -267,6 +268,7 @@ interface AssistantDashboardResponse {
 export class AClasserAnnoterComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
 
   rows: Array<{
     id: number;
@@ -294,22 +296,43 @@ export class AClasserAnnoterComponent implements OnInit {
   }
 
   markOpen(id: number): void {
-    this.runMutation(id, `${API_BASE_URL}/assistant/documents/${id}/classify`, { status: 'En cours' });
+    this.runMutation(id, `${API_BASE_URL}/assistant/documents/${id}/classify`, { status: 'En cours' }, {
+      successMessage: 'Document ouvert.'
+    });
   }
 
   markPriority(id: number): void {
-    this.runMutation(id, `${API_BASE_URL}/assistant/documents/${id}/classify`, { priority: 'Haute' });
+    this.runMutation(id, `${API_BASE_URL}/assistant/documents/${id}/classify`, { priority: 'Haute' }, {
+      successMessage: 'Priorite mise a jour.'
+    });
   }
 
   sendToChief(id: number): void {
-    this.runMutation(id, `${API_BASE_URL}/assistant/documents/${id}/send-to-chief`, {});
+    this.runMutation(id, `${API_BASE_URL}/assistant/documents/${id}/send-to-chief`, {}, {
+      successMessage: 'Document envoye au chef.',
+      action: {
+        label: 'Voir',
+        onAction: () => this.router.navigate(['/envoyes-au-chef'])
+      }
+    });
   }
 
   markDone(id: number): void {
-    this.runMutation(id, `${API_BASE_URL}/assistant/documents/${id}/mark-treated`, {});
+    this.runMutation(id, `${API_BASE_URL}/assistant/documents/${id}/mark-treated`, {}, {
+      successMessage: 'Document marque comme traite.',
+      action: {
+        label: 'Annuler',
+        onAction: () => this.undoToInProgress(id)
+      }
+    });
   }
 
-  private runMutation(id: number, url: string, payload: object): void {
+  private runMutation(
+    id: number,
+    url: string,
+    payload: object,
+    messages?: { successMessage?: string; errorMessage?: string; action?: { label: string; onAction: () => void } }
+  ): void {
     if (this.pendingIds.has(id)) {
       return;
     }
@@ -318,11 +341,21 @@ export class AClasserAnnoterComponent implements OnInit {
     this.http.patch(url, payload).subscribe({
       next: () => {
         this.pendingIds.delete(id);
+        if (messages?.successMessage) {
+          this.toast.success(messages.successMessage, 2500, messages.action);
+        }
         this.load();
       },
       error: () => {
         this.pendingIds.delete(id);
+        this.toast.error(messages?.errorMessage || 'Action impossible.');
       }
+    });
+  }
+
+  private undoToInProgress(id: number): void {
+    this.runMutation(id, `${API_BASE_URL}/assistant/documents/${id}/classify`, { status: 'En cours' }, {
+      successMessage: 'Action annulee.'
     });
   }
 

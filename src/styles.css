@@ -22,6 +22,18 @@
   --border-light: #e0e0e0;
   --white: #ffffff;
   --danger: #dc3545;
+  --toast-bg: #ffffff;
+  --toast-border: #e2e8f0;
+  --toast-text: #0f172a;
+  --toast-success-bg: #f0fdf4;
+  --toast-success-border: #bbf7d0;
+  --toast-success-text: #166534;
+  --toast-error-bg: #fef2f2;
+  --toast-error-border: #fecaca;
+  --toast-error-text: #991b1b;
+  --toast-info-bg: #eff6ff;
+  --toast-info-border: #bfdbfe;
+  --toast-info-text: #1d4ed8;
 }
 
 html, body {
