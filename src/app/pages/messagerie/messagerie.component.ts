@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { API_BASE_URL } from '../../auth/auth.service';
+import { ToastService } from '../../shared/toast/toast.service';
 
 interface RecipientUser {
   id: number;
@@ -466,6 +467,7 @@ type MailTab = 'compose' | 'inbox' | 'sent';
 })
 export class MessagerieComponent implements OnInit {
   private readonly http = inject(HttpClient);
+  private readonly toast = inject(ToastService);
 
   activeTab = signal<MailTab>('sent');
   recipients = signal<RecipientUser[]>([]);
@@ -521,12 +523,14 @@ export class MessagerieComponent implements OnInit {
           this.composeContent = '';
           this.selectedAttachmentFile.set(null);
           this.activeTab.set('sent');
+          this.toast.success('Message envoye.');
           this.loadSent();
           this.loadInbox();
         },
         error: (error) => {
           this.isSending.set(false);
           this.composeError.set(error?.error?.error || 'Échec de l’envoi du message.');
+          this.toast.error('Echec de l\'envoi du message.');
         }
       });
   }
@@ -540,8 +544,13 @@ export class MessagerieComponent implements OnInit {
 
   markAsRead(messageId: number) {
     this.http.post(`${API_BASE_URL}/messagerie/messages/${messageId}/mark-read`, {}).subscribe({
-      next: () => this.loadInbox(),
-      error: () => undefined
+      next: () => {
+        this.toast.info('Message marque comme lu.', 2000);
+        this.loadInbox();
+      },
+      error: () => {
+        this.toast.error('Impossible de marquer comme lu.');
+      }
     });
   }
 
@@ -565,7 +574,9 @@ export class MessagerieComponent implements OnInit {
           link.click();
           window.URL.revokeObjectURL(url);
         },
-        error: () => undefined
+        error: () => {
+          this.toast.error('Telechargement impossible.');
+        }
       });
   }
 

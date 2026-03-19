@@ -4,6 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { API_BASE_URL } from '../../auth/auth.service';
+import { ToastService } from '../../shared/toast/toast.service';
 
 interface CreateReceptionDocumentResponse {
   document: {
@@ -599,6 +600,7 @@ interface CreateReceptionDocumentResponse {
 export class EnregistrerCourrierComponent {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
   currentStep = 1;
 
   typeDocument = "Courrier d'arrivée";
@@ -677,22 +679,26 @@ export class EnregistrerCourrierComponent {
           this.http.post(`${API_BASE_URL}/reception/distributions/${document.id}/generate-bordereau`, {}).subscribe({
             next: () => {
               this.isSubmitting = false;
+              this.toast.success('Courrier enregistre et bordereau genere.');
               this.router.navigate(['/distributions']);
             },
             error: () => {
               this.isSubmitting = false;
               this.submitError = 'Courrier créé, mais échec de génération du bordereau.';
+              this.toast.error('Courrier cree, mais bordereau non genere.');
             }
           });
           return;
         }
 
         this.isSubmitting = false;
+        this.toast.success('Courrier enregistre.');
         this.router.navigate(['/distributions']);
       },
       error: () => {
         this.isSubmitting = false;
         this.submitError = 'Échec de l’enregistrement du courrier. Réessayez.';
+        this.toast.error("Echec de l'enregistrement du courrier.");
       }
     });
 

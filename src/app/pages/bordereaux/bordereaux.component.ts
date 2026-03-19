@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@ang
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { API_BASE_URL } from '../../auth/auth.service';
+import { ToastService } from '../../shared/toast/toast.service';
 
 interface BordereauItem {
   id: number;
@@ -228,6 +229,7 @@ interface BordereauxResponse {
 })
 export class BordereauxComponent implements OnInit {
   private readonly http = inject(HttpClient);
+  private readonly toast = inject(ToastService);
 
   isLoading = signal(false);
   errorMessage = signal('');
@@ -252,8 +254,14 @@ export class BordereauxComponent implements OnInit {
     this.errorMessage.set('');
 
     this.http.post(`${API_BASE_URL}/reception/bordereaux/${bordereauId}/mark-signed`, {}).subscribe({
-      next: () => this.loadBordereaux(),
-      error: () => this.errorMessage.set('Impossible de mettre à jour le bordereau.')
+      next: () => {
+        this.toast.success('Bordereau marqué comme signé.');
+        this.loadBordereaux();
+      },
+      error: () => {
+        this.toast.error('Impossible de mettre à jour le bordereau.');
+        this.errorMessage.set('Impossible de mettre à jour le bordereau.');
+      }
     });
   }
 
@@ -272,6 +280,7 @@ export class BordereauxComponent implements OnInit {
       error: () => {
         this.isLoading.set(false);
         this.errorMessage.set('Impossible de charger les bordereaux.');
+        this.toast.error('Impossible de charger les bordereaux.');
       }
     });
   }
