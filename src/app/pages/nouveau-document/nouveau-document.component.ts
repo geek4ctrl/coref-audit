@@ -1,9 +1,20 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { API_BASE_URL } from '../../auth/auth.service';
+
+type DocumentForm = {
+  documentNumber: string;
+  subject: string;
+  sender: string;
+  category: string;
+  confidentiality: string;
+  priority: string;
+  slaDays: number;
+  description: string;
+};
 
 @Component({
   selector: 'app-nouveau-document',
@@ -14,6 +25,8 @@ import { API_BASE_URL } from '../../auth/auth.service';
 
       <h2 class="page-title">Rédiger un nouveau document</h2>
       <p class="page-subtitle">Créez un document et ajoutez les pièces jointes nécessaires</p>
+      <div class="required-note">Champs obligatoires <span class="required">*</span></div>
+      <div class="autosave-note">Sauvegarde auto: {{ lastSavedLabel }}</div>
 
       <!-- Step indicator -->
       <div class="stepper">
@@ -31,61 +44,124 @@ import { API_BASE_URL } from '../../auth/auth.service';
       <!-- Step 1: Informations -->
       @if (currentStep === 1) {
         <div class="form-card">
-          <div class="form-group">
-            <label class="form-label">Numéro du document <span class="required">*</span></label>
-            <input class="form-input" type="text" placeholder="Ex: DOC-2025-001" [(ngModel)]="form.documentNumber" />
-          </div>
+          <div class="form-section">
+            <div class="section-title">Identification</div>
 
-          <div class="form-group">
-            <label class="form-label">Objet du document <span class="required">*</span></label>
-            <input class="form-input" type="text" placeholder="Ex: Demande de financement pour le projet..." [(ngModel)]="form.subject" />
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Expéditeur <span class="required">*</span></label>
-            <input class="form-input" type="text" placeholder="Ex: Direction des Finances" [(ngModel)]="form.sender" />
-          </div>
-
-          <div class="form-row">
             <div class="form-group">
-              <label class="form-label">Catégorie</label>
-              <select class="form-select" [(ngModel)]="form.category">
-                <option value="COURRIER_ARRIVEE">COURRIER_ARRIVEE</option>
-                <option value="COURRIER_DEPART">COURRIER_DEPART</option>
-                <option value="NOTE_INTERNE">NOTE_INTERNE</option>
-                <option value="RAPPORT">RAPPORT</option>
-                <option value="DEMANDE">DEMANDE</option>
-              </select>
+              <label class="form-label">Numéro du document <span class="required">*</span></label>
+              <input
+                class="form-input"
+                type="text"
+                placeholder="Ex: DOC-2025-001"
+                [(ngModel)]="form.documentNumber"
+                (ngModelChange)="onFieldChange()"
+                (blur)="markTouched('documentNumber')"
+                [class.invalid]="isFieldInvalid('documentNumber')"
+              />
+              @if (isFieldInvalid('documentNumber')) {
+                <div class="error-text">Le numéro du document est requis.</div>
+              }
             </div>
+
             <div class="form-group">
-              <label class="form-label">Confidentialité</label>
-              <select class="form-select" [(ngModel)]="form.confidentiality">
-                <option value="Interne">Interne</option>
-                <option value="Confidentiel">Confidentiel</option>
-                <option value="Public">Public</option>
-              </select>
+              <label class="form-label">Objet du document <span class="required">*</span></label>
+              <input
+                class="form-input"
+                type="text"
+                placeholder="Ex: Demande de financement pour le projet..."
+                [(ngModel)]="form.subject"
+                (ngModelChange)="onFieldChange()"
+                (blur)="markTouched('subject')"
+                [class.invalid]="isFieldInvalid('subject')"
+              />
+              @if (isFieldInvalid('subject')) {
+                <div class="error-text">L'objet du document est requis.</div>
+              }
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Expéditeur <span class="required">*</span></label>
+              <input
+                class="form-input"
+                type="text"
+                placeholder="Ex: Direction des Finances"
+                [(ngModel)]="form.sender"
+                (ngModelChange)="onFieldChange()"
+                (blur)="markTouched('sender')"
+                [class.invalid]="isFieldInvalid('sender')"
+              />
+              @if (isFieldInvalid('sender')) {
+                <div class="error-text">L'expéditeur est requis.</div>
+              }
             </div>
           </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Priorité</label>
-              <select class="form-select" [(ngModel)]="form.priority">
-                <option value="Normal">Normal</option>
-                <option value="Basse">Basse</option>
-                <option value="Haute">Haute</option>
-                <option value="Urgente">Urgente</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Délai de traitement (jours)</label>
-              <input class="form-input" type="number" [(ngModel)]="form.slaDays" min="1" />
+          <div class="form-section">
+            <div class="section-title">Classification</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Catégorie</label>
+                <select class="form-select" [(ngModel)]="form.category" (ngModelChange)="onFieldChange()">
+                  <option value="COURRIER_ARRIVEE">COURRIER_ARRIVEE</option>
+                  <option value="COURRIER_DEPART">COURRIER_DEPART</option>
+                  <option value="NOTE_INTERNE">NOTE_INTERNE</option>
+                  <option value="RAPPORT">RAPPORT</option>
+                  <option value="DEMANDE">DEMANDE</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Confidentialité</label>
+                <select class="form-select" [(ngModel)]="form.confidentiality" (ngModelChange)="onFieldChange()">
+                  <option value="Interne">Interne</option>
+                  <option value="Confidentiel">Confidentiel</option>
+                  <option value="Public">Public</option>
+                </select>
+              </div>
             </div>
           </div>
 
-          <div class="form-group">
-            <label class="form-label">Description / Notes</label>
-            <textarea class="form-textarea" rows="4" placeholder="Ajoutez des notes ou une description détaillée (optionnel)..." [(ngModel)]="form.description"></textarea>
+          <div class="form-section">
+            <div class="section-title">Priorité et délai</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Priorité</label>
+                <select class="form-select" [(ngModel)]="form.priority" (ngModelChange)="onFieldChange()">
+                  <option value="Normal">Normal</option>
+                  <option value="Basse">Basse</option>
+                  <option value="Haute">Haute</option>
+                  <option value="Urgente">Urgente</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Délai de traitement (jours)</label>
+                <input
+                  class="form-input"
+                  type="number"
+                  [(ngModel)]="form.slaDays"
+                  min="1"
+                  (ngModelChange)="onFieldChange()"
+                  (blur)="markTouched('slaDays')"
+                  [class.invalid]="isFieldInvalid('slaDays')"
+                />
+                @if (isFieldInvalid('slaDays')) {
+                  <div class="error-text">Le délai doit être supérieur ou égal à 1.</div>
+                }
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="section-title">Notes</div>
+            <div class="form-group">
+              <label class="form-label">Description / Notes</label>
+              <textarea
+                class="form-textarea"
+                rows="4"
+                placeholder="Ajoutez des notes ou une description détaillée (optionnel)..."
+                [(ngModel)]="form.description"
+                (ngModelChange)="onFieldChange()"
+              ></textarea>
+            </div>
           </div>
 
           <div class="form-actions">
@@ -179,6 +255,18 @@ import { API_BASE_URL } from '../../auth/auth.service';
       margin: 0 0 28px;
     }
 
+    .required-note {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 8px;
+    }
+
+    .autosave-note {
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 18px;
+    }
+
     .stepper {
       display: flex;
       align-items: center;
@@ -242,6 +330,25 @@ import { API_BASE_URL } from '../../auth/auth.service';
       margin-bottom: 20px;
     }
 
+    .form-section {
+      padding: 0 0 18px;
+      border-bottom: 1px solid #eef2f7;
+      margin-bottom: 18px;
+    }
+
+    .form-section:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 0 0 12px;
+    }
+
     .form-group {
       margin-bottom: 20px;
     }
@@ -276,6 +383,19 @@ import { API_BASE_URL } from '../../auth/auth.service';
       outline: none;
       border-color: #2563eb;
       box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .form-input.invalid,
+    .form-select.invalid,
+    .form-textarea.invalid {
+      border-color: #dc2626;
+      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+    }
+
+    .error-text {
+      font-size: 12px;
+      color: #dc2626;
+      margin-top: 6px;
     }
 
     .form-input::placeholder,
@@ -462,15 +582,25 @@ import { API_BASE_URL } from '../../auth/auth.service';
     }
   `]
 })
-export class NouveauDocumentComponent {
+export class NouveauDocumentComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly http = inject(HttpClient);
 
   currentStep = 1;
+  private readonly autosaveKey = 'coref-nouveau-document-draft';
+  private autosaveTimer: ReturnType<typeof setTimeout> | null = null;
   isSubmitting = false;
   files: File[] = [];
+  submitAttempted = false;
+  fieldTouched: Record<string, boolean> = {
+    documentNumber: false,
+    subject: false,
+    sender: false,
+    slaDays: false
+  };
+  lastSavedAt: Date | null = null;
 
-  form = {
+  form: DocumentForm = {
     documentNumber: '',
     subject: '',
     sender: '',
@@ -482,7 +612,28 @@ export class NouveauDocumentComponent {
   };
 
   get isStep1Valid(): boolean {
-    return !!(this.form.documentNumber.trim() && this.form.subject.trim() && this.form.sender.trim());
+    return !!(
+      this.form.documentNumber.trim() &&
+      this.form.subject.trim() &&
+      this.form.sender.trim() &&
+      this.isSlaValid()
+    );
+  }
+
+  get lastSavedLabel(): string {
+    if (!this.lastSavedAt) {
+      return 'brouillon non enregistre';
+    }
+    return new Intl.DateTimeFormat('fr-FR', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(this.lastSavedAt);
+  }
+
+  ngOnInit(): void {
+    this.restoreDraft();
   }
 
   goBack(): void {
@@ -490,9 +641,38 @@ export class NouveauDocumentComponent {
   }
 
   goToStep2(): void {
+    this.submitAttempted = true;
     if (this.isStep1Valid) {
       this.currentStep = 2;
     }
+  }
+
+  onFieldChange(): void {
+    this.scheduleAutosave();
+  }
+
+  markTouched(field: keyof NouveauDocumentComponent['fieldTouched']): void {
+    this.fieldTouched[field] = true;
+  }
+
+  isFieldInvalid(field: keyof NouveauDocumentComponent['fieldTouched']): boolean {
+    if (!this.submitAttempted && !this.fieldTouched[field]) {
+      return false;
+    }
+
+    if (field === 'documentNumber') {
+      return !this.form.documentNumber.trim();
+    }
+    if (field === 'subject') {
+      return !this.form.subject.trim();
+    }
+    if (field === 'sender') {
+      return !this.form.sender.trim();
+    }
+    if (field === 'slaDays') {
+      return !this.isSlaValid();
+    }
+    return false;
   }
 
   onDragOver(event: DragEvent): void {
@@ -545,6 +725,7 @@ export class NouveauDocumentComponent {
     this.http.post(`${API_BASE_URL}/documents`, payload).subscribe({
       next: () => {
         this.isSubmitting = false;
+        this.clearDraft();
         this.router.navigate(['/documents']);
       },
       error: () => {
@@ -561,5 +742,51 @@ export class NouveauDocumentComponent {
         this.files.push(file);
       }
     }
+  }
+
+  private isSlaValid(): boolean {
+    return Number.isFinite(this.form.slaDays) && this.form.slaDays >= 1;
+  }
+
+  private scheduleAutosave(): void {
+    if (this.autosaveTimer) {
+      clearTimeout(this.autosaveTimer);
+    }
+    this.autosaveTimer = setTimeout(() => {
+      this.persistDraft();
+    }, 600);
+  }
+
+  private persistDraft(): void {
+    const payload = {
+      form: this.form,
+      currentStep: this.currentStep
+    };
+    localStorage.setItem(this.autosaveKey, JSON.stringify(payload));
+    this.lastSavedAt = new Date();
+  }
+
+  private restoreDraft(): void {
+    const raw = localStorage.getItem(this.autosaveKey);
+    if (!raw) {
+      return;
+    }
+    try {
+      const parsed = JSON.parse(raw) as { form?: DocumentForm; currentStep?: number };
+      if (parsed.form) {
+        this.form = { ...this.form, ...parsed.form };
+      }
+      if (parsed.currentStep) {
+        this.currentStep = parsed.currentStep;
+      }
+      this.lastSavedAt = new Date();
+    } catch {
+      localStorage.removeItem(this.autosaveKey);
+    }
+  }
+
+  private clearDraft(): void {
+    localStorage.removeItem(this.autosaveKey);
+    this.lastSavedAt = null;
   }
 }
