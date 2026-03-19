@@ -1,29 +1,12 @@
 import { Routes } from '@angular/router';
 import { DashboardLayoutComponent } from './layout/dashboard-layout.component';
-import { DashboardComponent } from './pages/dashboard/dashboard.component';
-import { ReceptionComponent } from './pages/reception';
-import { EnvoiComponent } from './pages/envoi/envoi.component';
-import { CategoriesComponent } from './pages/categories/categories.component';
-import { NouveauDocumentComponent } from './pages/nouveau-document/nouveau-document.component';
-import { EspaceReceptionComponent } from './pages/espace-reception/espace-reception.component';
-import { UtilisateursComponent } from './pages/utilisateurs/utilisateurs.component';
-import { RechercheComponent } from './pages/recherche/recherche.component';
-import { DocumentsComponent } from './pages/documents/documents.component';
-import { RetardsComponent } from './pages/retards/retards.component';
-import { RelancesComponent } from './pages/relances/relances.component';
-import { LoginComponent } from './pages/login/login.component';
-import { DistributionsComponent } from './pages/distributions/distributions.component';
-import { BordereauxComponent } from './pages/bordereaux/bordereaux.component';
-import { EnregistrerCourrierComponent } from './pages/enregistrer-courrier/enregistrer-courrier.component';
-import { MessagerieComponent } from './pages/messagerie';
-import { AClasserAnnoterComponent } from './pages/a-classer-annoter/a-classer-annoter.component';
-import { EnvoyesAuChefComponent } from './pages/envoyes-au-chef/envoyes-au-chef.component';
-import { ATraiterParChefComponent } from './pages/a-traiter-par-chef/a-traiter-par-chef.component';
-import { AuditLogsComponent } from './pages/audit-logs/audit-logs.component';
 import { authChildGuard, authGuard } from './auth/auth.guard';
 
 export const routes: Routes = [
-  { path: 'login', component: LoginComponent },
+  {
+    path: 'login',
+    loadComponent: () => import('./pages/login/login.component').then((m) => m.LoginComponent)
+  },
   {
     path: '',
     component: DashboardLayoutComponent,
@@ -33,27 +16,27 @@ export const routes: Routes = [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       {
         path: 'dashboard',
-        component: DashboardComponent,
+        loadComponent: () => import('./pages/dashboard/dashboard.component').then((m) => m.DashboardComponent),
         data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF', 'PILIER', 'PILIER_COORD', 'SECRETARIAT', 'SERVICE_INTERNE', 'AUDITEUR'] },
       },
       {
         path: 'a-classer-annoter',
-        component: AClasserAnnoterComponent,
+        loadComponent: () => import('./pages/a-classer-annoter/a-classer-annoter.component').then((m) => m.AClasserAnnoterComponent),
         data: { roles: ['ADMIN', 'ASSISTANT_CHEF'] },
       },
       {
         path: 'envoyes-au-chef',
-        component: EnvoyesAuChefComponent,
+        loadComponent: () => import('./pages/envoyes-au-chef/envoyes-au-chef.component').then((m) => m.EnvoyesAuChefComponent),
         data: { roles: ['ADMIN', 'ASSISTANT_CHEF'] },
       },
       {
         path: 'a-traiter-par-chef',
-        component: ATraiterParChefComponent,
+        loadComponent: () => import('./pages/a-traiter-par-chef/a-traiter-par-chef.component').then((m) => m.ATraiterParChefComponent),
         data: { roles: ['ADMIN', 'ASSISTANT_CHEF', 'SERVICE_INTERNE'] },
       },
       {
         path: 'documents',
-        component: DocumentsComponent,
+        loadComponent: () => import('./pages/documents/documents.component').then((m) => m.DocumentsComponent),
         data: {
           roles: [
             'ADMIN',
@@ -69,38 +52,42 @@ export const routes: Routes = [
       },
       {
         path: 'reception',
-        component: ReceptionComponent,
+        loadComponent: () => import('./pages/reception/reception.component').then((m) => m.ReceptionComponent),
         data: { roles: ['ADMIN', 'RECEPTION'] },
       },
       {
         path: 'distributions',
-        component: DistributionsComponent,
+        loadComponent: () => import('./pages/distributions/distributions.component').then((m) => m.DistributionsComponent),
         data: { roles: ['ADMIN', 'RECEPTION'] },
       },
       {
         path: 'bordereaux',
-        component: BordereauxComponent,
+        loadComponent: () => import('./pages/bordereaux/bordereaux.component').then((m) => m.BordereauxComponent),
         data: { roles: ['ADMIN', 'RECEPTION'] },
       },
       {
         path: 'enregistrer-courrier',
-        component: EnregistrerCourrierComponent,
+        loadComponent: () => import('./pages/enregistrer-courrier/enregistrer-courrier.component').then((m) => m.EnregistrerCourrierComponent),
         data: { roles: ['ADMIN', 'RECEPTION'] },
       },
       {
         path: 'messagerie',
-        component: MessagerieComponent,
+        loadComponent: () => import('./pages/messagerie/messagerie.component').then((m) => m.MessagerieComponent),
         data: { roles: ['ADMIN', 'RECEPTION', 'SERVICE_INTERNE', 'CHEF_SG'] },
       },
       {
         path: 'envoi',
-        component: EnvoiComponent,
+        loadComponent: () => import('./pages/envoi/envoi.component').then((m) => m.EnvoiComponent),
         data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF', 'SECRETARIAT'] },
       },
-      { path: 'categories', component: CategoriesComponent, data: { roles: ['ADMIN'] } },
+      {
+        path: 'categories',
+        loadComponent: () => import('./pages/categories/categories.component').then((m) => m.CategoriesComponent),
+        data: { roles: ['ADMIN'] }
+      },
       {
         path: 'recherche',
-        component: RechercheComponent,
+        loadComponent: () => import('./pages/recherche/recherche.component').then((m) => m.RechercheComponent),
         data: {
           roles: [
             'ADMIN',
@@ -117,25 +104,37 @@ export const routes: Routes = [
       },
       {
         path: 'nouveau',
-        component: NouveauDocumentComponent,
+        loadComponent: () => import('./pages/nouveau-document/nouveau-document.component').then((m) => m.NouveauDocumentComponent),
         data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF', 'SECRETARIAT', 'PILIER', 'SERVICE_INTERNE'] },
       },
-      { path: 'espace-reception', component: EspaceReceptionComponent, data: { roles: ['ADMIN'] } },
-      { path: 'services', component: EspaceReceptionComponent, data: { roles: ['ADMIN'] } },
+      {
+        path: 'espace-reception',
+        loadComponent: () => import('./pages/espace-reception/espace-reception.component').then((m) => m.EspaceReceptionComponent),
+        data: { roles: ['ADMIN'] }
+      },
+      {
+        path: 'services',
+        loadComponent: () => import('./pages/espace-reception/espace-reception.component').then((m) => m.EspaceReceptionComponent),
+        data: { roles: ['ADMIN'] }
+      },
       {
         path: 'relances',
-        component: RelancesComponent,
+        loadComponent: () => import('./pages/relances/relances.component').then((m) => m.RelancesComponent),
         data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF'] },
       },
       {
         path: 'retards',
-        component: RetardsComponent,
+        loadComponent: () => import('./pages/retards/retards.component').then((m) => m.RetardsComponent),
         data: { roles: ['ADMIN', 'CHEF_SG', 'ASSISTANT_CHEF', 'AUDITEUR'] },
       },
-      { path: 'utilisateurs', component: UtilisateursComponent, data: { roles: ['ADMIN'] } },
+      {
+        path: 'utilisateurs',
+        loadComponent: () => import('./pages/utilisateurs/utilisateurs.component').then((m) => m.UtilisateursComponent),
+        data: { roles: ['ADMIN'] }
+      },
       {
         path: 'audit-logs',
-        component: AuditLogsComponent,
+        loadComponent: () => import('./pages/audit-logs/audit-logs.component').then((m) => m.AuditLogsComponent),
         data: { roles: ['ADMIN', 'AUDITEUR'] },
       },
     ],
