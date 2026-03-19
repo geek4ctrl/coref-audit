@@ -4,6 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { StatusCardComponent, StatusCard } from '../../shared/status-card/status-card.component';
 import { API_BASE_URL, AuthService } from '../../auth/auth.service';
+import { ToastService } from '../../shared/toast/toast.service';
 import { Observable } from 'rxjs';
 import { finalize, timeout } from 'rxjs/operators';
 
@@ -2171,6 +2172,7 @@ export class DashboardComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly toast = inject(ToastService);
 
   pageTitle = 'Dashboard Chef';
   pageSubtitle = "Centre de contrôle — Vue d'ensemble en 5 secondes";
@@ -2458,10 +2460,12 @@ export class DashboardComponent implements OnInit {
       .subscribe({
         next: () => {
           this.pendingDocumentIds.delete(documentId);
+          this.toast.success('Document ouvert.');
           this.loadAssistantDashboard();
         },
         error: () => {
           this.pendingDocumentIds.delete(documentId);
+          this.toast.error('Action impossible.');
         }
       });
   }
@@ -2477,10 +2481,15 @@ export class DashboardComponent implements OnInit {
       .subscribe({
         next: () => {
           this.pendingDocumentIds.delete(documentId);
+          this.toast.success('Document envoye au chef.', 2500, {
+            label: 'Voir',
+            onAction: () => this.router.navigate(['/envoyes-au-chef'])
+          });
           this.loadAssistantDashboard();
         },
         error: () => {
           this.pendingDocumentIds.delete(documentId);
+          this.toast.error('Action impossible.');
         }
       });
   }
@@ -2496,10 +2505,36 @@ export class DashboardComponent implements OnInit {
       .subscribe({
         next: () => {
           this.pendingDocumentIds.delete(documentId);
+          this.toast.success('Document marque comme traite.', 2500, {
+            label: 'Annuler',
+            onAction: () => this.undoAssistantToInProgress(documentId)
+          });
           this.loadAssistantDashboard();
         },
         error: () => {
           this.pendingDocumentIds.delete(documentId);
+          this.toast.error('Action impossible.');
+        }
+      });
+  }
+
+  private undoAssistantToInProgress(documentId: number): void {
+    if (this.pendingDocumentIds.has(documentId)) {
+      return;
+    }
+
+    this.pendingDocumentIds.add(documentId);
+    this.http
+      .patch(`${API_BASE_URL}/assistant/documents/${documentId}/classify`, { status: 'En cours' })
+      .subscribe({
+        next: () => {
+          this.pendingDocumentIds.delete(documentId);
+          this.toast.success('Action annulee.');
+          this.loadAssistantDashboard();
+        },
+        error: () => {
+          this.pendingDocumentIds.delete(documentId);
+          this.toast.error('Annulation impossible.');
         }
       });
   }

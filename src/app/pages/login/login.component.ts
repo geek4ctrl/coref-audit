@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
+import { ToastService } from '../../shared/toast/toast.service';
 
 @Component({
   selector: 'app-login',
@@ -251,6 +252,7 @@ import { AuthService } from '../../auth/auth.service';
 export class LoginComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
   email = '';
   password = '';
   remember = true;
@@ -269,11 +271,13 @@ export class LoginComponent {
     this.authService.login(this.email, this.password, this.remember).subscribe({
       next: () => {
         this.isSubmitting.set(false);
+        this.toast.success('Login successful.');
         this.router.navigate([this.authService.getDefaultRoute(this.authService.getRole())]);
       },
       error: () => {
         this.isSubmitting.set(false);
         this.errorMessage.set('Invalid credentials.');
+        this.toast.error('Invalid credentials.');
       }
     });
   }
