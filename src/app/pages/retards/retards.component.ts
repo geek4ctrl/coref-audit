@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { API_BASE_URL } from '../../auth/auth.service';
+import { finalize } from 'rxjs/operators';
 
 interface RetardsResponse {
   cards: { totalLate: number; avgDelay: number; maxHolderName: string; maxHolderCount: number };
@@ -409,22 +410,28 @@ interface RetardsResponse {
 })
 export class RetardsComponent implements OnInit {
   private readonly http = inject(HttpClient);
+  private readonly cdr = inject(ChangeDetectorRef);
   isLoading = true;
   cards = { totalLate: 0, avgDelay: 0, maxHolderName: '—', maxHolderCount: 0 };
   topHolders: { name: string; count: number; averageDelay: number }[] = [];
   documents: { id: number; number: string; subject: string; owner: string; dueDate: string; delayDays: number; priority: string; status: string }[] = [];
 
   ngOnInit(): void {
-    this.http.get<RetardsResponse>(`${API_BASE_URL}/retards`).subscribe({
-      next: (data) => {
-        this.cards = data.cards;
-        this.topHolders = data.topHolders;
-        this.documents = data.documents;
+    this.http.get<RetardsResponse>(`${API_BASE_URL}/retards`)
+      .pipe(finalize(() => {
         this.isLoading = false;
-      },
-      error: () => {
-        this.isLoading = false;
-      }
-    });
+        this.cdr.markForCheck();
+      }))
+      .subscribe({
+        next: (data) => {
+          this.cards = data.cards;
+          this.topHolders = data.topHolders;
+          this.documents = data.documents;
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.cdr.markForCheck();
+        }
+      });
   }
 }
