@@ -45,6 +45,7 @@ interface AssistantDashboardDocument {
   delay: string;
   delayTone: 'danger' | 'muted';
   priority: string;
+  chiefDecision?: string | null;
 }
 
 interface DashboardDocument {
@@ -56,11 +57,13 @@ interface DashboardDocument {
   ownerRole: string;
   status: string;
   statusTone: 'info' | 'warning' | 'success';
+  lastActionAt?: string;
   lastAction: string;
   lastActionNote: string;
   delay: string;
   delayTone: 'danger' | 'muted';
   priority?: string;
+  chiefDecision?: string | null;
 }
 
 @Component({
@@ -936,7 +939,7 @@ interface DashboardDocument {
           <div class="filters-row">
             <div class="filter-chips">
               @for (filter of quickFilters; track filter.label) {
-                <button class="filter-chip" [class.active]="filter.active">
+                <button class="filter-chip" [class.active]="filter.active" (click)="onQuickFilterClick(filter.label)">
                   <span class="chip-label">{{ filter.label }}</span>
                   <span class="chip-count">{{ filter.count }}</span>
                 </button>
@@ -950,7 +953,7 @@ interface DashboardDocument {
           <div class="table-header">
             <div>
               <h3 class="table-title">Documents en cours</h3>
-              <p class="table-subtitle">{{ documents.length }} documents</p>
+              <p class="table-subtitle">{{ filteredDocuments.length }} documents</p>
             </div>
           </div>
           <div class="table-wrapper">
@@ -982,7 +985,7 @@ interface DashboardDocument {
                     </tr>
                   }
                 } @else {
-                  @for (doc of documents; track doc.number) {
+                  @for (doc of filteredDocuments; track doc.number) {
                     <tr [class.urgent-row]="doc.priority === 'Haute' || doc.priority === 'Urgente'">
                       <td>
                         <div class="doc-number">{{ doc.number }}</div>
@@ -2799,19 +2802,61 @@ export class DashboardComponent implements OnInit {
       ...item,
       active: item.label === label
     }));
+  }
 
-    const scopeByLabel: Record<string, string> = {
-      'Tous': 'all',
-      'À traiter': 'to-process',
-      'Destinés à moi': 'assigned-to-me',
-      'Envoyés par moi': 'sent-by-me',
-      'Sans accusé réception': 'no-ack',
-      'En retard': 'delayed',
-      'Bloqués': 'blocked',
-      'Traités cette semaine': 'treated-this-week'
-    };
+  private get activeQuickFilterLabel(): string {
+    return this.quickFilters.find((item) => item.active)?.label || 'Tous';
+  }
 
-    this.openChefDocuments(scopeByLabel[label] || 'all', true);
+  private isLateDocument(doc: DashboardDocument): boolean {
+    return doc.delayTone === 'danger' || /retard/i.test(doc.delay || '');
+  }
+
+  private isUrgentDocument(doc: DashboardDocument): boolean {
+    return ['Urgente', 'Haute'].includes(doc.priority || '');
+  }
+
+  private hasChiefDecision(doc: DashboardDocument): boolean {
+    return typeof doc.chiefDecision === 'string' && doc.chiefDecision.trim().length > 0;
+  }
+
+  private isWithinDays(dateValue: string | undefined, days: number): boolean {
+    if (!dateValue) return false;
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) return false;
+    const diffMs = Date.now() - date.getTime();
+    return diffMs >= 0 && diffMs <= days * 86400000;
+  }
+
+  get filteredDocuments(): DashboardDocument[] {
+    const label = this.activeQuickFilterLabel;
+    const docs = this.documents;
+
+    switch (label) {
+      case 'En retard':
+        return docs.filter((doc) => this.isLateDocument(doc));
+      case 'Destinés à moi':
+        return docs.filter((doc) =>
+          doc.status === 'Envoyé au Chef' || !this.hasChiefDecision(doc)
+        );
+      case 'À traiter':
+        return docs.filter((doc) => /\b(a|à)\s*traiter\b/i.test(doc.status || ''));
+      case 'Envoyés par moi':
+        return docs.filter((doc) => doc.status === 'Envoyé au Chef');
+      case 'Sans accusé réception':
+        return docs.filter((doc) => doc.status === 'Envoyé au Chef' && !this.hasChiefDecision(doc));
+      case 'Urgents':
+        return docs.filter((doc) => this.isUrgentDocument(doc));
+      case 'Bloqués':
+        return docs.filter((doc) => doc.chiefDecision === 'BLOQUER');
+      case 'Traités cette semaine':
+        return docs.filter((doc) =>
+          /termin(e|é)/i.test(doc.status || '')
+          && this.isWithinDays(doc.lastActionAt, 7)
+        );
+      default:
+        return docs;
+    }
   }
 
   openChefDocuments(scope: string = 'all', showFilters: boolean = false): void {
