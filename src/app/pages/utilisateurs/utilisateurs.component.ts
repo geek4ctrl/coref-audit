@@ -1,9 +1,10 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { API_BASE_URL } from '../../auth/auth.service';
 import { ToastService } from '../../shared/toast/toast.service';
+import { finalize } from 'rxjs/operators';
 
 interface ApiUser {
   id: number;
@@ -509,6 +510,7 @@ const ROLE_MAP: Record<string, { label: string; tone: string }> = {
 export class UtilisateursComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly toast = inject(ToastService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   users: UserRow[] = [];
   isLoading = true;
@@ -542,26 +544,40 @@ export class UtilisateursComponent implements OnInit {
 
   private loadUsers(): void {
     this.isLoading = true;
-    this.http.get<{ users: ApiUser[] }>(`${API_BASE_URL}/users`).subscribe({
-      next: (data) => {
-        this.users = data.users.map(u => this.mapUser(u));
+    this.http.get<{ users?: ApiUser[] }>(`${API_BASE_URL}/users`)
+      .pipe(finalize(() => {
         this.isLoading = false;
-      },
-      error: () => { this.isLoading = false; }
-    });
+        this.cdr.markForCheck();
+      }))
+      .subscribe({
+        next: (data) => {
+          const rawUsers = Array.isArray(data?.users)
+            ? data.users
+            : Array.isArray((data as { users?: { users?: ApiUser[] } })?.users?.users)
+              ? (data as { users?: { users?: ApiUser[] } }).users!.users!
+              : [];
+          this.users = rawUsers.map(u => this.mapUser(u));
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.toast.error('Impossible de charger les utilisateurs.');
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   private mapUser(u: ApiUser): UserRow {
     const mapped = ROLE_MAP[u.role] || { label: u.role, tone: 'slate' };
-    const parts = u.name.trim().split(/\s+/);
+    const safeName = (u.name || '').trim() || (u.email || '').split('@')[0] || 'Utilisateur';
+    const parts = safeName.split(/\s+/);
     const initials = parts.length >= 2
       ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-      : u.name.substring(0, 2).toUpperCase();
+      : safeName.substring(0, 2).toUpperCase();
     return {
       id: u.id,
       initials,
-      name: u.name,
-      email: u.email,
+      name: safeName,
+      email: u.email || '',
       role: u.role,
       roleLabel: mapped.label,
       roleTone: mapped.tone,
