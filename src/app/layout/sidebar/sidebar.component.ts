@@ -224,7 +224,8 @@ export class SidebarComponent {
             { label: 'Rédiger un document', route: '/nouveau', icon: '▣' },
             { label: 'Envoyés au Chef', route: '/envoyes-au-chef', icon: '✈' },
             { label: 'À traiter par Chef', route: '/a-traiter-par-chef', icon: '◷' },
-            { label: 'Recherche', route: '/recherche', icon: '🔍' }
+            { label: 'Recherche', route: '/recherche', icon: '🔍' },
+            { label: 'Messagerie', route: '/messagerie', icon: '✉️' }
           ]
         }
       ];
