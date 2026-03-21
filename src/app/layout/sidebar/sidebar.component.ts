@@ -239,7 +239,8 @@ export class SidebarComponent {
             { label: 'Dashboard', route: '/dashboard', icon: '⌘' },
             { label: 'Mes Documents', route: '/documents', icon: '📄' },
             { label: 'Rédiger un document', route: '/nouveau', icon: '✍️' },
-            { label: 'Recherche', route: '/recherche', icon: '🔍' }
+            { label: 'Recherche', route: '/recherche', icon: '🔍' },
+            { label: 'Messagerie', route: '/messagerie', icon: '✉️' }
           ]
         }
       ];
