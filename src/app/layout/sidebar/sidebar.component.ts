@@ -253,7 +253,8 @@ export class SidebarComponent {
           items: [
             { label: 'Dashboard', route: '/dashboard', icon: '⌘' },
             { label: 'Documents', route: '/documents', icon: '📄' },
-            { label: 'Recherche', route: '/recherche', icon: '🔍' }
+            { label: 'Recherche', route: '/recherche', icon: '🔍' },
+            { label: 'Messagerie', route: '/messagerie', icon: '✉️' }
           ]
         }
       ];
@@ -265,10 +266,11 @@ export class SidebarComponent {
           title: 'BUREAU SECRÉTARIAT',
           items: [
             { label: 'Dashboard', route: '/dashboard', icon: '⌘' },
-            { label: 'Documents à formater', route: '/documents', icon: '📋' },
-            { label: 'Documents formatés', route: '/documents', icon: '📄' },
+            { label: 'Documents à formater', route: '/documents?tab=a-formater', icon: '📋' },
+            { label: 'Documents formatés', route: '/documents?tab=formates', icon: '📄' },
             { label: 'Envoyer / Router', route: '/envoi', icon: '✈' },
-            { label: 'Recherche', route: '/recherche', icon: '🔍' }
+            { label: 'Recherche', route: '/recherche', icon: '🔍' },
+            { label: 'Messagerie', route: '/messagerie', icon: '✉️' }
           ]
         }
       ];
@@ -325,7 +327,8 @@ export class SidebarComponent {
             { label: 'Documents', route: '/documents', icon: '📄' },
             { label: 'Retards', route: '/retards', icon: '⏱️' },
             { label: "Journal d'audit", route: '/audit-logs', icon: '📝' },
-            { label: 'Recherche', route: '/recherche', icon: '🔍' }
+            { label: 'Recherche', route: '/recherche', icon: '🔍' },
+            { label: 'Messagerie', route: '/messagerie', icon: '✉️' }
           ]
         }
       ];
@@ -358,7 +361,8 @@ export class SidebarComponent {
             { label: 'Recherche', route: '/recherche', icon: '🔍' },
             { label: 'Envoyer / Router', route: '/envoi', icon: '📤' },
             { label: 'Relances', route: '/relances', icon: '🔔' },
-            { label: 'Retards', route: '/retards', icon: '⏱️' }
+            { label: 'Retards', route: '/retards', icon: '⏱️' },
+            { label: 'Messagerie', route: '/messagerie', icon: '✉️' }
           ]
         },
         {
