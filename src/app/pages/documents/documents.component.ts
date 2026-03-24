@@ -79,6 +79,10 @@ interface ApiResponse {
                 <option value="Traité">Traité</option>
                 <option value="Clôturé">Clôturé</option>
                 <option value="Validé">Validé</option>
+                <option value="A_FORMATER">À formater</option>
+                <option value="FORMATE">Formaté</option>
+                <option value="RETOUR_CORRECTION">Retour correction</option>
+                <option value="ENVOYE_ASSISTANTE">Envoyé à l'assistante</option>
               </select>
             </div>
 
@@ -521,16 +525,33 @@ export class DocumentsComponent implements OnInit {
     this.route.queryParamMap.subscribe((params) => {
       const scope = params.get('scope');
       const showFiltersParam = params.get('showFilters');
+      const tab = params.get('tab');
 
       if (showFiltersParam === '1') {
         this.showFilters.set(true);
       }
 
-      if (scope === 'delayed') {
-        this.filterLate = 'true';
+      this.resetFilters();
+
+      if (tab) {
+        if (tab === 'a-formater') {
+          this.filterStatus = 'A_FORMATER';
+          this.currentScopeLabel.set('Documents à formater');
+          this.showFilters.set(true);
+        } else if (tab === 'formates') {
+          this.filterStatus = 'FORMATE';
+          this.currentScopeLabel.set('Documents formatés');
+          this.showFilters.set(true);
+        } else {
+          this.currentScopeLabel.set(this.mapScope(scope));
+        }
+      } else {
+        if (scope === 'delayed') {
+          this.filterLate = 'true';
+        }
+        this.currentScopeLabel.set(this.mapScope(scope));
       }
 
-      this.currentScopeLabel.set(this.mapScope(scope));
       this.loadDocuments();
     });
   }
@@ -591,6 +612,13 @@ export class DocumentsComponent implements OnInit {
     a.download = `documents-coref-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  private resetFilters(): void {
+    this.filterStatus = '';
+    this.filterPriority = '';
+    this.filterCategory = '';
+    this.filterLate = '';
   }
 
   private mapDocument(d: ApiDocument): Document {
